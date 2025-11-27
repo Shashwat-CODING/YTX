@@ -18,6 +18,9 @@ class AudioHandler {
 
   // Loading state
   final ValueNotifier<bool> isLoadingStream = ValueNotifier(false);
+  
+  // Track current loading video to prevent race conditions
+  String? _currentLoadingVideoId;
 
   AudioPlayer get player => _player;
   ConcatenatingAudioSource get playlist => _playlist;
@@ -38,10 +41,15 @@ class AudioHandler {
   Future<void> playVideo(dynamic video) async {
     try {
       isLoadingStream.value = true;
-      // Add to history
+      
+      String? videoId;
       if (video is YtifyResult) {
+        videoId = video.videoId;
         _storage.addToHistory(video);
       }
+      
+      // Update current loading video ID
+      _currentLoadingVideoId = videoId;
 
       // Clear queue and play single video
       await _playlist.clear();
@@ -50,8 +58,8 @@ class AudioHandler {
       await _player.play();
       
       // Queue related videos immediately
-      if (video is YtifyResult && video.videoId != null) {
-        _queueRelatedVideos(video.videoId!);
+      if (videoId != null) {
+        _queueRelatedVideos(videoId);
       }
     } catch (e) {
       debugPrint('Error playing video: $e');
@@ -64,6 +72,13 @@ class AudioHandler {
 
     try {
       final related = await _apiService.getRelatedVideos(videoId);
+      
+      // Check if the video we fetched related videos for is still the current one
+      if (_currentLoadingVideoId != videoId) {
+        debugPrint('Skipping queue related videos for $videoId as it is no longer current');
+        return;
+      }
+
       if (related.isNotEmpty) {
         for (final item in related) {
           // Check if already in queue

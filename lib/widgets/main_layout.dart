@@ -9,6 +9,7 @@ import 'package:ytx/screens/about_screen.dart';
 import 'package:ytx/services/navigator_key.dart';
 import 'package:ytx/widgets/mini_player.dart';
 import 'package:ytx/services/share_service.dart';
+import 'package:ytx/widgets/global_background.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -46,59 +47,61 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     final audioHandler = ref.watch(audioHandlerProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
-      body: Stack(
-        children: [
-          // Main Content (Navigator)
-          widget.child,
+    return GlobalBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Main Content (Navigator)
+            widget.child,
 
-          // MiniPlayer and Floating Navigation Bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              child: IgnorePointer(
-                ignoring: isPlayerExpanded,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: isPlayerExpanded ? 0.0 : 1.0,
-                  child: Center(
-                    child: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.9,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const MiniPlayer(),
-                          const SizedBox(height: 2),
-                          _buildFloatingNavBar(context, ref, selectedIndex),
-                          const SizedBox(height: 16),
-                        ],
+            // MiniPlayer and Floating Navigation Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                child: IgnorePointer(
+                  ignoring: isPlayerExpanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isPlayerExpanded ? 0.0 : 1.0,
+                    child: Center(
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.9,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const MiniPlayer(),
+                            const SizedBox(height: 2),
+                            _buildFloatingNavBar(context, ref, selectedIndex),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // Loading Overlay
-          ValueListenableBuilder<bool>(
-            valueListenable: audioHandler.isLoadingStream,
-            builder: (context, isLoading, _) {
-              if (!isLoading) return const SizedBox.shrink();
-              return Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
+            // Loading Overlay
+            ValueListenableBuilder<bool>(
+              valueListenable: audioHandler.isLoadingStream,
+              builder: (context, isLoading, _) {
+                if (!isLoading) return const SizedBox.shrink();
+                return Container(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

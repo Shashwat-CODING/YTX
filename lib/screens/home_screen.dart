@@ -17,7 +17,7 @@ class HomeScreen extends ConsumerWidget {
     final selectedIndex = ref.watch(navigationIndexProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: Colors.transparent,
       body: IndexedStack(
         index: selectedIndex,
         children: [

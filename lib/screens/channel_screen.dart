@@ -66,7 +66,7 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
@@ -75,7 +75,7 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                   expandedHeight: 280.0,
                   floating: false,
                   pinned: true,
-                  backgroundColor: const Color(0xFF0F0F0F),
+                  backgroundColor: Colors.transparent,
                     flexibleSpace: FlexibleSpaceBar(
                     background: Stack(
                       fit: StackFit.expand,

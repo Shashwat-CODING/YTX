@@ -74,7 +74,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final displayThumbnail = widget.thumbnailUrl ?? _topSongsPlaylist?.thumbnail;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
@@ -83,7 +83,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   expandedHeight: 200.0,
                   floating: false,
                   pinned: true,
-                  backgroundColor: const Color(0xFF0F0F0F),
+                  backgroundColor: Colors.transparent,
                   flexibleSpace: FlexibleSpaceBar(
                     title: Text(displayName),
                     background: displayThumbnail != null

@@ -61,7 +61,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final author = _playlistDetails?.author ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: Colors.transparent,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
@@ -70,7 +70,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   expandedHeight: 240.0,
                   floating: false,
                   pinned: true,
-                  backgroundColor: const Color(0xFF0F0F0F),
+                  backgroundColor: Colors.transparent,
                   flexibleSpace: FlexibleSpaceBar(
                     title: Text(displayTitle),
                     background: Stack(

@@ -12,7 +12,7 @@ class SettingsScreen extends ConsumerWidget {
     final currentQuality = ref.watch(settingsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Text('Settings'),

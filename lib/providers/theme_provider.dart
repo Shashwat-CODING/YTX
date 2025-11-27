@@ -16,7 +16,7 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
 
   static final _darkTheme = ThemeData(
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+    scaffoldBackgroundColor: Colors.transparent,
     colorScheme: const ColorScheme.dark(
       primary: Color(0xFFFF0000), // YouTube Red
       secondary: Color(0xFFFFFFFF),
@@ -68,7 +68,7 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
 
       state = ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+    scaffoldBackgroundColor: Colors.transparent,
         colorScheme: ColorScheme.dark(
           primary: vibrantColor,
           secondary: dominantColor,
