@@ -14,9 +14,26 @@ YTX is a feature-rich, privacy-focused YouTube Music client built with Flutter. 
 *   **Share to Play**: Share links directly from YouTube or YouTube Music to YTX to play them instantly.
 *   **Auto-Queue**: Automatically queues related songs for endless playback.
 *   **Dynamic Theming**: UI adapts to the colors of the currently playing album art.
-*   **RapidAPI Fallback**: User-configurable fallback system using RapidAPI to ensure playback reliability even if the primary API fails.
+*   **RapidAPI Fallback**: (Failure is very rare) User-configurable fallback system using RapidAPI to ensure playback reliability even if the primary API fails.
 *   **Sleek UI**: Modern, glassmorphic design with smooth animations.
 *   **Privacy Focused**: No login required, data stored locally.
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="images/photo_6140958916184050733_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050748_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050749_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050750_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050751_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050752_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050753_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050754_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050755_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050756_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050757_y.jpg" width="30%" />
+  <img src="images/photo_6140958916184050758_y.jpg" width="30%" />
+</p>
 
 ## 🛠️ Tech Stack
 
