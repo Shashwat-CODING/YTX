@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ytx/providers/player_provider.dart';
@@ -91,12 +92,12 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                     return ListTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          song.thumbnails.isNotEmpty ? song.thumbnails.last.url : '',
+                        child: CachedNetworkImage(
+                          imageUrl: song.thumbnails.isNotEmpty ? song.thumbnails.last.url : '',
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
+                          errorWidget: (context, url, error) =>
                               Container(color: Colors.grey[800], width: 48, height: 48),
                         ),
                       ),

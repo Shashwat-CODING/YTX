@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:ytx/screens/home_screen.dart';
+import 'package:ytx/screens/auth_screen.dart';
 import 'package:ytx/services/storage_service.dart';
 import 'package:ytx/services/navigator_key.dart';
 import 'package:ytx/services/notification_service.dart';
+import 'package:ytx/services/cloud_sync_service.dart';
 import 'package:ytx/widgets/main_layout.dart';
 import 'package:ytx/providers/theme_provider.dart';
 
@@ -42,6 +44,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize background sync
+    ref.read(cloudSyncServiceProvider).initBackgroundSync();
+
     final theme = ref.watch(themeProvider);
     
     return MaterialApp(
@@ -49,10 +54,15 @@ class MyApp extends ConsumerWidget {
       title: 'YTX',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      builder: (context, child) {
-        return MainLayout(child: child ?? const SizedBox.shrink());
-      },
-      home: const HomeScreen(),
+      home: Builder(
+        builder: (context) {
+          final storage = ref.watch(storageServiceProvider);
+          if (storage.username == null) {
+            return const AuthScreen();
+          }
+          return const MainLayout(child: HomeScreen());
+        },
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -7,6 +8,8 @@ import 'package:ytx/screens/playlist_details_screen.dart';
 import 'package:ytx/providers/player_provider.dart';
 import 'package:ytx/models/ytify_result.dart';
 import 'package:ytx/providers/download_provider.dart';
+import 'package:ytx/widgets/playlist_selection_dialog.dart';
+import 'package:flutter/cupertino.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -41,12 +44,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     const SizedBox(height: 16),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
+                      child: CachedNetworkImage(
+                        imageUrl: item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
+                        errorWidget: (context, url, error) =>
                             Container(color: Colors.grey[800], width: 80, height: 80),
                       ),
                     ),
@@ -116,7 +119,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       label: 'Add to Playlist',
                       onTap: () {
                         Navigator.pop(context);
-                        // TODO: Implement add to playlist dialog
+                        showCupertinoDialog(
+                          context: context,
+                          barrierDismissible: true,
+                          builder: (context) => PlaylistSelectionDialog(song: item),
+                        );
                       },
                     ),
                     const Divider(color: Colors.grey, height: 1),
@@ -311,12 +318,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
+                                  child: CachedNetworkImage(
+                                    imageUrl: item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
                                     height: 110,
                                     width: itemWidth,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
+                                    errorWidget: (context, url, error) =>
                                         Container(color: Colors.grey[800], width: itemWidth, height: 110),
                                   ),
                                 ),
@@ -399,12 +406,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                           Colors.black.withOpacity(0.5), 
                                           BlendMode.darken
                                         ),
-                                        child: Image.network(
-                                          item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
+                                        child: CachedNetworkImage(
+                                          imageUrl: item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
                                           height: 110,
                                           width: itemWidth,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) =>
+                                          errorWidget: (context, url, error) =>
                                               Container(color: Colors.grey[800], width: itemWidth, height: 110),
                                         ),
                                       ),
@@ -452,12 +459,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
+                                  child: CachedNetworkImage(
+                                    imageUrl: item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
                                     height: 110,
                                     width: itemWidth,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
+                                    errorWidget: (context, url, error) =>
                                         Container(color: Colors.grey[800], width: itemWidth, height: 110),
                                   ),
                                 ),
@@ -532,12 +539,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
+                                  child: CachedNetworkImage(
+                                    imageUrl: item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '',
                                     height: 110,
                                     width: itemWidth,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
+                                    errorWidget: (context, url, error) =>
                                         Container(color: Colors.grey[800], width: itemWidth, height: 110),
                                   ),
                                 ),

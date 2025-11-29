@@ -33,9 +33,18 @@ class GlobalBackground extends ConsumerWidget {
                   ),
                   Positioned.fill(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                      filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
                       child: Container(
-                        color: Colors.black.withValues(alpha: 0.7), // Dark overlay
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.5),
+                              Colors.black.withValues(alpha: 0.9),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),

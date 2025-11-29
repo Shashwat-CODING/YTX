@@ -19,8 +19,7 @@ class AudioHandler {
   // Loading state
   final ValueNotifier<bool> isLoadingStream = ValueNotifier(false);
   
-  // Track current loading video to prevent race conditions
-  String? _currentLoadingVideoId;
+
 
   AudioPlayer get player => _player;
   ConcatenatingAudioSource get playlist => _playlist;
@@ -48,57 +47,18 @@ class AudioHandler {
         _storage.addToHistory(video);
       }
       
-      // Update current loading video ID
-      _currentLoadingVideoId = videoId;
-
       // Clear queue and play single video
       await _playlist.clear();
       await addToQueue(video);
       await _player.setAudioSource(_playlist);
       await _player.play();
-      
-      // Queue related videos immediately
-      if (videoId != null) {
-        _queueRelatedVideos(videoId);
-      }
     } catch (e) {
       debugPrint('Error playing video: $e');
       isLoadingStream.value = false; // Hide spinner on error
     }
   }
 
-  Future<void> _queueRelatedVideos(String videoId) async {
-    if (!_storage.autoQueueEnabled) return;
 
-    try {
-      final related = await _apiService.getRelatedVideos(videoId);
-      
-      // Check if the video we fetched related videos for is still the current one
-      if (_currentLoadingVideoId != videoId) {
-        debugPrint('Skipping queue related videos for $videoId as it is no longer current');
-        return;
-      }
-
-      if (related.isNotEmpty) {
-        for (final item in related) {
-          // Check if already in queue
-          bool alreadyInQueue = false;
-          for (final source in _playlist.sequence) {
-            if ((source.tag as MediaItem).id == item.videoId) {
-              alreadyInQueue = true;
-              break;
-            }
-          }
-          
-          if (!alreadyInQueue) {
-            await addToQueue(item);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error queueing related videos: $e');
-    }
-  }
 
   Future<void> addToQueue(dynamic video) async {
     try {
@@ -292,6 +252,53 @@ class AudioHandler {
 
     } catch (e) {
       debugPrint('Error playing next: $e');
+    }
+  }
+
+  Future<void> removeQueueItem(int index) async {
+    try {
+      await _playlist.removeAt(index);
+    } catch (e) {
+      debugPrint('Error removing queue item: $e');
+    }
+  }
+
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    try {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      await _playlist.move(oldIndex, newIndex);
+    } catch (e) {
+      debugPrint('Error reordering queue: $e');
+    }
+  }
+
+  Future<void> clearQueue() async {
+    try {
+      // Keep the currently playing item if any
+      final currentIndex = _player.currentIndex;
+      if (currentIndex != null && _playlist.length > 1) {
+        // We can't easily clear all EXCEPT one in ConcatenatingAudioSource without potentially stopping playback
+        // But we can remove everything after current, and everything before current
+        
+        // Remove everything after
+        if (currentIndex < _playlist.length - 1) {
+           // removeRange is not available on ConcatenatingAudioSource directly in a way that is atomic for "all after"
+           // We have to remove one by one from the end or use removeRange if supported (it's not in just_audio_background wrapper usually)
+           // Actually ConcatenatingAudioSource has removeRange
+           await _playlist.removeRange(currentIndex + 1, _playlist.length);
+        }
+        
+        // Remove everything before
+        if (currentIndex > 0) {
+           await _playlist.removeRange(0, currentIndex);
+        }
+      } else {
+        await _playlist.clear();
+      }
+    } catch (e) {
+      debugPrint('Error clearing queue: $e');
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:ytx/models/ytify_result.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,31 +81,39 @@ class ResultTile extends ConsumerWidget {
               : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        height: 54,
-                        fit: BoxFit.fitHeight,
-                        placeholder: (context, url) => Container(
-                          height: 54,
-                          width: 54,
-                          color: Colors.grey[800],
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          height: 54,
-                          width: 54,
-                          color: Colors.grey[900],
-                          child: const Icon(Icons.error),
-                        ),
-                      )
-                    : Container(
-                        height: 54,
-                        width: 54,
-                        color: Colors.grey[900],
-                        child: const Icon(Icons.music_note),
-                      ),
+              // Calculate width based on result type
+              Builder(
+                builder: (context) {
+                  final isVideo = result.resultType == 'video';
+                  final width = isVideo ? 96.0 : 54.0;
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            height: 54,
+                            width: width,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              height: 54,
+                              width: width,
+                              color: Colors.grey[800],
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              height: 54,
+                              width: width,
+                              color: Colors.grey[900],
+                              child: const Icon(Icons.error), // Keep Material Icon for error fallback or use FaIcon
+                            ),
+                          )
+                        : Container(
+                            height: 54,
+                            width: width,
+                            color: Colors.grey[900],
+                            child: const Icon(Icons.music_note), // Keep Material Icon for fallback
+                          ),
+                  );
+                }
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -164,7 +173,7 @@ class ResultTile extends ConsumerWidget {
                       if (result.videoId == null) return const SizedBox.shrink();
                       final isFav = storage.isFavorite(result.videoId!);
                       return PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
+                        icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, color: Colors.white),
                         color: const Color(0xFF1E1E1E),
                         onSelected: (value) async {
                           if (value == 'queue') {
@@ -173,8 +182,9 @@ class ResultTile extends ConsumerWidget {
                           } else if (value == 'play_next') {
                             ref.read(audioHandlerProvider).playNext(result);
                           } else if (value == 'playlist') {
-                            showDialog(
+                            showCupertinoDialog(
                               context: context,
+                              barrierDismissible: true,
                               builder: (context) => PlaylistSelectionDialog(song: result),
                             );
                           } else if (value == 'favorite') {
@@ -232,7 +242,7 @@ class ResultTile extends ConsumerWidget {
                             value: 'queue',
                             child: Row(
                               children: [
-                                Icon(Icons.queue_music, color: Colors.white),
+                                FaIcon(FontAwesomeIcons.list, color: Colors.white),
                                 SizedBox(width: 12),
                                 Text('Add to queue', style: TextStyle(color: Colors.white)),
                               ],
@@ -242,7 +252,7 @@ class ResultTile extends ConsumerWidget {
                             value: 'play_next',
                             child: Row(
                               children: [
-                                Icon(Icons.playlist_play, color: Colors.white),
+                                FaIcon(FontAwesomeIcons.circlePlay, color: Colors.white),
                                 SizedBox(width: 12),
                                 Text('Play next', style: TextStyle(color: Colors.white)),
                               ],
@@ -252,7 +262,7 @@ class ResultTile extends ConsumerWidget {
                             value: 'playlist',
                             child: Row(
                               children: [
-                                Icon(Icons.playlist_add, color: Colors.white),
+                                FaIcon(FontAwesomeIcons.plus, color: Colors.white),
                                 SizedBox(width: 12),
                                 Text('Add to playlist', style: TextStyle(color: Colors.white)),
                               ],
@@ -262,7 +272,7 @@ class ResultTile extends ConsumerWidget {
                             value: 'favorite',
                             child: Row(
                               children: [
-                                Icon(isFav ? Icons.favorite : Icons.favorite_border, color: Colors.white),
+                                FaIcon(isFav ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart, color: Colors.white),
                                 const SizedBox(width: 12),
                                 Text(isFav ? 'Remove from favorites' : 'Add to favorites', style: const TextStyle(color: Colors.white)),
                               ],
@@ -272,7 +282,7 @@ class ResultTile extends ConsumerWidget {
                             value: 'download',
                             child: Row(
                               children: [
-                                Icon(isDownloaded ? Icons.download_done : Icons.download, color: Colors.white),
+                                FaIcon(isDownloaded ? FontAwesomeIcons.check : FontAwesomeIcons.download, color: Colors.white),
                                 const SizedBox(width: 12),
                                 Text(isDownloaded ? 'Remove download' : 'Download', style: const TextStyle(color: Colors.white)),
                               ],

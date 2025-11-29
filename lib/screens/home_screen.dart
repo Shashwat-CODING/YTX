@@ -145,11 +145,17 @@ class HomeScreen extends ConsumerWidget {
                   return Container(
                     width: MediaQuery.of(context).size.width * 0.85, // 85% of screen width
                     margin: const EdgeInsets.only(right: 16),
+                    // decoration: BoxDecoration(
+                    //   color: Colors.white.withValues(alpha: 0.05),
+                    //   borderRadius: BorderRadius.circular(16),
+                    //   border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    // ),
+                    padding: const EdgeInsets.all(8),
                     child: Column(
                       children: chunk.map((result) => Expanded(
                         child: ResultTile(
                           result: result,
-                          compact: true, // We need to add this property to ResultTile or just use it as is if it fits
+                          compact: true, 
                         ),
                       )).toList(),
                     ),

@@ -348,4 +348,81 @@ class YouTubeApiService {
       return {'songs': [], 'videos': [], 'playlists': []};
     }
   }
+  Future<YtifyResult?> getVideoDetails(String videoId) async {
+    try {
+      final url = Uri.parse('${_baseUrl}player?key=$_apiKey');
+      final headers = {
+        'X-Goog-Api-Format-Version': '1',
+        'X-YouTube-Client-Name': _clientId.toString(),
+        'X-YouTube-Client-Version': _clientVersion,
+        'User-Agent': _userAgent,
+        'Referer': _referer,
+        'Content-Type': 'application/json',
+      };
+
+      final body = jsonEncode({
+        'context': {
+          'client': {
+            'clientName': _clientName,
+            'clientVersion': _clientVersion,
+            'clientId': _clientId,
+            'userAgent': _userAgent,
+          }
+        },
+        'videoId': videoId,
+      });
+
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (response.statusCode != 200) {
+        debugPrint('YouTube API Error (getVideoDetails): ${response.statusCode}');
+        return null;
+      }
+
+      final data = jsonDecode(response.body);
+      final videoDetails = data['videoDetails'];
+      
+      if (videoDetails == null) {
+        debugPrint('No videoDetails found for: $videoId');
+        return null;
+      }
+
+      final thumbnails = (videoDetails['thumbnail']?['thumbnails'] as List?)
+          ?.map((t) => YtifyThumbnail(
+                url: t['url'],
+                width: t['width'] ?? 0,
+                height: t['height'] ?? 0,
+              ))
+          .toList() ?? [];
+
+      // Ensure we have at least one thumbnail
+      if (thumbnails.isEmpty) {
+        thumbnails.add(YtifyThumbnail(
+          url: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
+          width: 480,
+          height: 360,
+        ));
+      }
+
+      final durationSeconds = int.tryParse(videoDetails['lengthSeconds'] ?? '0') ?? 0;
+      final duration = Duration(seconds: durationSeconds);
+      String twoDigits(int n) => n.toString().padLeft(2, "0");
+      String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+      String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+      final durationString = "${duration.inHours > 0 ? '${twoDigits(duration.inHours)}:' : ''}$twoDigitMinutes:$twoDigitSeconds";
+
+      return YtifyResult(
+        videoId: videoDetails['videoId'],
+        title: videoDetails['title'] ?? 'Unknown Title',
+        artists: [YtifyArtist(name: videoDetails['author'] ?? 'Unknown Artist', id: '')],
+        thumbnails: thumbnails,
+        duration: durationString,
+        resultType: 'video',
+        isExplicit: false,
+      );
+    } catch (e) {
+      debugPrint('Error fetching video details: $e');
+      return null;
+    }
+  }
 }

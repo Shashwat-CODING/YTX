@@ -55,24 +55,18 @@ class ShareService {
     if (videoId != null) {
       showGlassSnackBar(context, 'Fetching shared video...');
       
-      // Fetch video details to get title, author, thumbnail
-      final response = await _apiService.search(videoId, filter: 'videos');
+      // Fetch video details specifically by ID
+      final video = await _apiService.getVideoDetails(videoId);
       
-      if (response.results.isNotEmpty) {
-        // Ideally the first result is the video itself if we searched by ID
-        final video = response.results.first;
-        // Verify it matches the ID roughly or just trust the search
-        // (Search by ID usually returns the exact video first)
-        
+      if (video != null) {
         _audioHandler.playVideo(video);
       } else {
         showGlassSnackBar(context, 'Could not find video details');
-        // Fallback: try playing with just ID if possible, but playVideo expects YtifyResult for history
-        // We can construct a dummy result
+        // Fallback: try playing with just ID
         final dummyResult = YtifyResult(
           videoId: videoId,
           title: 'Shared Video',
-          artists: [YtifyArtist(name: 'Unknown')],
+          artists: [YtifyArtist(name: 'Unknown', id: '')],
           thumbnails: [],
           duration: '0:00',
           resultType: 'video',

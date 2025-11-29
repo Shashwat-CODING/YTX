@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter/cupertino.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ytx/providers/navigation_provider.dart';
@@ -10,6 +10,7 @@ import 'package:ytx/services/navigator_key.dart';
 import 'package:ytx/widgets/mini_player.dart';
 import 'package:ytx/services/share_service.dart';
 import 'package:ytx/widgets/global_background.dart';
+import 'package:ytx/widgets/sync_progress_dialog.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -124,12 +125,12 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildNavItem(context, ref, CupertinoIcons.home, 0, selectedIndex),
-                _buildNavItem(context, ref, CupertinoIcons.search, 1, selectedIndex),
-                _buildNavItem(context, ref, CupertinoIcons.music_albums, 2, selectedIndex),
-                _buildNavItem(context, ref, CupertinoIcons.person_2, 3, selectedIndex), // Subscriptions
-                _buildNavItem(context, ref, CupertinoIcons.settings, 4, selectedIndex),
-                _buildNavItem(context, ref, CupertinoIcons.info, 5, selectedIndex),
+                _buildNavItem(context, ref, FontAwesomeIcons.house, 0, selectedIndex),
+                _buildNavItem(context, ref, FontAwesomeIcons.magnifyingGlass, 1, selectedIndex),
+                _buildNavItem(context, ref, FontAwesomeIcons.compactDisc, 2, selectedIndex),
+                _buildNavItem(context, ref, FontAwesomeIcons.userGroup, 3, selectedIndex), // Subscriptions
+                _buildNavItem(context, ref, FontAwesomeIcons.gear, 4, selectedIndex),
+                _buildNavItem(context, ref, FontAwesomeIcons.rotate, 5, selectedIndex), // Sync
               ],
             ),
           ),
@@ -141,23 +142,28 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final isSelected = selectedIndex == index;
     return GestureDetector(
       onTap: () {
-        ref.read(navigationIndexProvider.notifier).state = index;
-        
-        if (index == 4) {
+        if (index < 4) {
+          ref.read(navigationIndexProvider.notifier).state = index;
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        } else if (index == 4) {
            navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
         } else if (index == 5) {
-           navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const AboutScreen()));
-        } else {
-           navigatorKey.currentState?.popUntil((route) => route.isFirst);
+           if (navigatorKey.currentContext != null) {
+             showDialog(
+               context: navigatorKey.currentContext!,
+               barrierDismissible: false,
+               builder: (context) => const SyncProgressDialog(),
+             );
+           }
         }
       },
       child: Container(
         color: Colors.transparent, // Hit test behavior
         padding: const EdgeInsets.all(12),
-        child: Icon(
+        child: FaIcon(
           icon,
           color: isSelected ? Colors.white : Colors.grey.withValues(alpha: 0.6),
-          size: 26,
+          size: 20, // Adjusted size for Font Awesome
         ),
       ),
     );

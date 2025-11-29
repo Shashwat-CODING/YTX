@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:ytx/widgets/global_background.dart';
 
 
 class AboutScreen extends StatelessWidget {
@@ -7,109 +8,111 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return GlobalBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'About',
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: '.SF Pro Text',
-            fontWeight: FontWeight.w600,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text(
+            'About',
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: '.SF Pro Text',
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.blue.shade400,
-                      Colors.purple.shade400,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purple.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      spreadRadius: 5,
+        body: SingleChildScrollView(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 40),
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.purple.shade400,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.music_note_2,
+                    size: 60,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  CupertinoIcons.music_note_2,
-                  size: 60,
-                  color: Colors.white,
+                const SizedBox(height: 24),
+                const Text(
+                  'YTX',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: '.SF Pro Display',
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'YTX',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: '.SF Pro Display',
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
-                    width: 0.5,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: const Text(
+                    'Premium Music Client',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: '.SF Pro Text',
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Premium Music Client',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: '.SF Pro Text',
+                const SizedBox(height: 40),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'YTX is a powerful YouTube music client designed for a premium listening experience. Enjoy ad-free music, background playback, offline downloads, and a beautiful user interface.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 16,
+                      height: 1.5,
+                      fontFamily: '.SF Pro Text',
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 40),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  'YTX is a powerful YouTube music client designed for a premium listening experience. Enjoy ad-free music, background playback, offline downloads, and a beautiful user interface.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 16,
-                    height: 1.5,
-                    fontFamily: '.SF Pro Text',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 48),
-              _buildInfoRow(CupertinoIcons.info, 'Version', '1.0.0'),
-              const SizedBox(height: 16),
-              _buildInfoRow(CupertinoIcons.person, 'Developer', 'Shashwat'),
-              const SizedBox(height: 16),
-              _buildInfoRow(CupertinoIcons.device_laptop, 'Platform', 'Flutter'),
-              const SizedBox(height: 40),
-              const SizedBox(height: 160),
-            ],
+                const SizedBox(height: 48),
+                _buildInfoRow(CupertinoIcons.info, 'Version', '1.0.0'),
+                const SizedBox(height: 16),
+                _buildInfoRow(CupertinoIcons.person, 'Developer', 'Shashwat'),
+                const SizedBox(height: 16),
+                _buildInfoRow(CupertinoIcons.device_laptop, 'Platform', 'Flutter'),
+                const SizedBox(height: 40),
+                const SizedBox(height: 160),
+              ],
+            ),
           ),
         ),
       ),

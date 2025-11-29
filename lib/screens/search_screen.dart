@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ytx/providers/search_provider.dart';
 import 'package:ytx/widgets/result_tile.dart';
@@ -57,35 +59,44 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search songs, videos, artists',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  filled: true,
-                  fillColor: const Color(0xFF1E1E1E),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _showSuggestions = false;
-                      });
-                      ref.read(searchQueryProvider.notifier).state = '';
-                    },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Search songs, videos, artists',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: const Color(0xFF1E1E1E).withValues(alpha: 0.5),
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: FaIcon(FontAwesomeIcons.magnifyingGlass, color: Colors.white, size: 18),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const FaIcon(FontAwesomeIcons.xmark, color: Colors.grey, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _showSuggestions = false;
+                            });
+                            ref.read(searchQueryProvider.notifier).state = '';
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      ),
+                      onSubmitted: (value) {
+                        _performSearch(value);
+                      },
+                    ),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
-                onSubmitted: (value) {
-                  _performSearch(value);
-                },
-              ),
             ),
             if (!_showSuggestions) ...[
               SingleChildScrollView(
@@ -116,7 +127,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           itemBuilder: (context, index) {
                             final suggestion = suggestions[index];
                             return ListTile(
-                              leading: const Icon(Icons.search, color: Colors.grey),
+                              leading: const FaIcon(FontAwesomeIcons.magnifyingGlass, color: Colors.grey, size: 16),
                               title: Text(
                                 suggestion,
                                 style: const TextStyle(color: Colors.white),
@@ -185,25 +196,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _buildFilterChip(String label, String currentFilter) {
     final isSelected = label.toLowerCase() == currentFilter.toLowerCase();
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (bool selected) {
-        ref.read(searchFilterProvider.notifier).state = label.toLowerCase();
-      },
-      backgroundColor: const Color(0xFF1E1E1E),
-      selectedColor: Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.black : Colors.white,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isSelected ? Colors.white : Colors.grey[800]!,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: FilterChip(
+          label: Text(label),
+          selected: isSelected,
+          onSelected: (bool selected) {
+            ref.read(searchFilterProvider.notifier).state = label.toLowerCase();
+          },
+          backgroundColor: const Color(0xFF1E1E1E).withValues(alpha: 0.5),
+          selectedColor: Colors.white.withValues(alpha: 0.2),
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.white : Colors.white,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isSelected ? Colors.white : Colors.grey[800]!,
+            ),
+          ),
+          showCheckmark: false,
         ),
       ),
-      showCheckmark: false,
     );
   }
 }

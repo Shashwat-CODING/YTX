@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ytx/providers/settings_provider.dart';
 import 'package:ytx/services/storage_service.dart';
+import 'package:ytx/services/cloud_sync_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:ytx/widgets/global_background.dart';
+import 'package:ytx/screens/about_screen.dart';
+import 'package:ytx/services/auth_service.dart';
+import 'package:ytx/screens/auth_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -11,152 +16,255 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentQuality = ref.watch(settingsProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return GlobalBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        title: const Text('Settings'),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Audio Quality',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildQualityOption(
-                context,
-                ref,
-                'High',
-                AudioQuality.high,
-                currentQuality,
-              ),
-              _buildQualityOption(
-                context,
-                ref,
-                'Medium',
-                AudioQuality.medium,
-                currentQuality,
-              ),
-              _buildQualityOption(
-                context,
-                ref,
-                'Low',
-                AudioQuality.low,
-                currentQuality,
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Playback',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Consumer(
-                builder: (context, ref, _) {
-                  final storage = ref.watch(storageServiceProvider);
-                  return ValueListenableBuilder(
-                    valueListenable: storage.settingsListenable,
-                    builder: (context, box, _) {
-                      final autoQueueEnabled = storage.autoQueueEnabled;
-                      return SwitchListTile(
-                        title: const Text(
-                          'Auto Queue Related Songs',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        subtitle: Text(
-                          'Automatically add related songs to queue when playing',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                        ),
-                        value: autoQueueEnabled,
-                        onChanged: (value) => storage.setAutoQueueEnabled(value),
-                        activeColor: Theme.of(context).colorScheme.primary,
-                        contentPadding: EdgeInsets.zero,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              Consumer(
-                builder: (context, ref, _) {
-                  final storage = ref.watch(storageServiceProvider);
-                  return ValueListenableBuilder(
-                    valueListenable: storage.settingsListenable,
-                    builder: (context, box, _) {
-                      final apiKey = storage.rapidApiKey;
-                      final countryCode = storage.rapidApiCountryCode;
-                      return Column(
-                        children: [
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('Settings'),
+          centerTitle: true,
+        ),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSection('Audio Quality', [
+                  _buildQualityOption(context, ref, 'High', AudioQuality.high, currentQuality),
+                  const Divider(height: 1, color: Colors.white10),
+                  _buildQualityOption(context, ref, 'Medium', AudioQuality.medium, currentQuality),
+                  const Divider(height: 1, color: Colors.white10),
+                  _buildQualityOption(context, ref, 'Low', AudioQuality.low, currentQuality),
+                ]),
+
+                Consumer(
+                  builder: (context, ref, _) {
+                    final storage = ref.watch(storageServiceProvider);
+                    return ValueListenableBuilder(
+                      valueListenable: storage.settingsListenable,
+                      builder: (context, box, _) {
+                        final apiKey = storage.rapidApiKey;
+                        final countryCode = storage.rapidApiCountryCode;
+                        
+                        return _buildSection('Playback', [
                           ListTile(
-                            title: const Text(
-                              'Ignore Battery Optimizations',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            subtitle: Text(
-                              'Prevent app from being suspended in background',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                            ),
+                            title: const Text('Ignore Battery Optimizations', style: TextStyle(color: Colors.white)),
+                            subtitle: Text('Prevent app from being suspended', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                             trailing: const Icon(Icons.battery_alert, color: Colors.white),
-                            contentPadding: EdgeInsets.zero,
-                            onTap: () async {
-                              await Permission.ignoreBatteryOptimizations.request();
-                            },
+                            onTap: () async => await Permission.ignoreBatteryOptimizations.request(),
                           ),
+                          const Divider(height: 1, color: Colors.white10),
                           ListTile(
-                            title: const Text(
-                              'RapidAPI Key (Fallback)',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            title: const Text('RapidAPI Key', style: TextStyle(color: Colors.white)),
                             subtitle: Text(
-                              apiKey != null && apiKey.isNotEmpty
-                                  ? 'Key set: ${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}'
-                                  : 'Not set (Fallback disabled)',
+                              apiKey != null && apiKey.isNotEmpty ? 'Key set' : 'Not set',
                               style: TextStyle(color: Colors.grey[400], fontSize: 12),
                             ),
                             trailing: const Icon(Icons.edit, color: Colors.white),
-                            contentPadding: EdgeInsets.zero,
                             onTap: () => _showApiKeyDialog(context, storage),
                           ),
+                          const Divider(height: 1, color: Colors.white10),
                           ListTile(
-                            title: const Text(
-                              'RapidAPI Country Code',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            title: const Text('RapidAPI Country Code', style: TextStyle(color: Colors.white)),
                             subtitle: Text(
                               countryCode.isNotEmpty ? 'Current: $countryCode' : 'Default: IN',
                               style: TextStyle(color: Colors.grey[400], fontSize: 12),
                             ),
                             trailing: const Icon(Icons.public, color: Colors.white),
-                            contentPadding: EdgeInsets.zero,
                             onTap: () => _showApiCountryDialog(context, storage),
                           ),
-                        ],
-                      );
+                        ]);
+                      },
+                    );
+                  },
+                ),
+
+                Consumer(
+                  builder: (context, ref, _) {
+                    final storage = ref.watch(storageServiceProvider);
+                    return ValueListenableBuilder(
+                      valueListenable: storage.settingsListenable,
+                      builder: (context, box, _) {
+                        final postgresUri = storage.postgresUri;
+                        return _buildSection('Cloud Sync', [
+                          // Show User Info if logged in
+                          if (storage.username != null) ...[
+                            ListTile(
+                              leading: const Icon(Icons.person, color: Colors.white),
+                              title: Text('Logged in as ${storage.username}', style: const TextStyle(color: Colors.white)),
+                              subtitle: Text(storage.email ?? '', style: const TextStyle(color: Colors.grey)),
+                              trailing: TextButton(
+                                onPressed: () async {
+                                  await ref.read(authServiceProvider).logout();
+                                  if (context.mounted) {
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(builder: (_) => const AuthScreen()),
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                                child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                              ),
+                            ),
+                          ] else ...[
+                            // Show manual config if not logged in
+                            ListTile(
+                              leading: const Icon(Icons.storage, color: Colors.white),
+                              title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
+                              subtitle: Text(
+                                storage.postgresUri != null && storage.postgresUri!.isNotEmpty ? 'Configured' : 'Not Configured',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                              onTap: () {
+                                _showTextInputDialog(
+                                  context: context,
+                                  title: 'PostgreSQL URI',
+                                  initialValue: storage.postgresUri,
+                                  onSubmitted: (value) {
+                                    storage.setPostgresUri(value);
+                                  },
+                                );
+                              },
+                            ),
+                            const Divider(height: 1, color: Colors.white10),
+                            ListTile(
+                              leading: const Icon(Icons.login, color: Colors.white),
+                              title: const Text('Login / Signup', style: TextStyle(color: Colors.white)),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const AuthScreen()),
+                                );
+                              },
+                            ),
+                          ],
+                          if (postgresUri != null && postgresUri.isNotEmpty) ...[
+                            const Divider(height: 1, color: Colors.white10),
+                            ListTile(
+                              title: const Text('Sync Now', style: TextStyle(color: Colors.white)),
+                              subtitle: Text('Sync data with cloud', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                              trailing: const Icon(Icons.sync, color: Colors.white),
+                              onTap: () async {
+                                try {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing...')));
+                                  await ref.read(cloudSyncServiceProvider).syncData();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync successful!')));
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ]);
+                      },
+                    );
+                  },
+                ),
+
+                _buildSection('App Info', [
+                  ListTile(
+                    title: const Text('About', style: TextStyle(color: Colors.white)),
+                    subtitle: Text('Version 1.0.0', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                    trailing: const Icon(Icons.info_outline, color: Colors.white),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
                     },
-                  );
-                },
-              ),
-              const SizedBox(height: 160),
-            ],
+                  ),
+                ]),
+                
+                const SizedBox(height: 160), // Increased padding
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-    void _showApiKeyDialog(BuildContext context, StorageService storage) {
+  Widget _buildSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 8),
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  void _showPostgresUriDialog(BuildContext context, StorageService storage) {
+    final controller = TextEditingController(text: storage.postgresUri);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your PostgreSQL connection URI to sync your data across devices.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Format: postgres://user:password@host:port/database',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'postgres://...',
+                hintStyle: TextStyle(color: Colors.grey),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              storage.setPostgresUri(controller.text.trim());
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showApiKeyDialog(BuildContext context, StorageService storage) {
     final controller = TextEditingController(text: storage.rapidApiKey);
     showDialog(
       context: context,
@@ -273,6 +381,42 @@ class SettingsScreen extends ConsumerWidget {
       onTap: () {
         ref.read(settingsProvider.notifier).setAudioQuality(quality);
       },
+    );
+  }
+  void _showTextInputDialog({
+    required BuildContext context,
+    required String title,
+    String? initialValue,
+    required Function(String) onSubmitted,
+  }) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              onSubmitted(controller.text.trim());
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 }

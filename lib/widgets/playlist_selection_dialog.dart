@@ -32,22 +32,31 @@ class _PlaylistSelectionDialogState extends ConsumerState<PlaylistSelectionDialo
               )
             : Material(
                 color: Colors.transparent,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: playlists.length,
-                  itemBuilder: (context, index) {
-                    final name = playlists[index];
-                    return CupertinoListTile(
-                      leading: const Icon(CupertinoIcons.music_albums, color: CupertinoColors.white),
-                      title: Text(name, style: const TextStyle(color: CupertinoColors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      onTap: () {
-                        storage.addToPlaylist(name, widget.song);
-                        Navigator.pop(context);
-                        showGlassSnackBar(context, 'Added to $name');
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: SizedBox(
+                    height: playlists.length * 56.0 > MediaQuery.of(context).size.height * 0.5 
+                        ? MediaQuery.of(context).size.height * 0.5 
+                        : playlists.length * 56.0,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: playlists.length,
+                      itemBuilder: (context, index) {
+                        final name = playlists[index];
+                        return ListTile(
+                          leading: const Icon(Icons.album, color: Colors.white),
+                          title: Text(name, style: const TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          onTap: () {
+                            storage.addToPlaylist(name, widget.song);
+                            Navigator.pop(context);
+                            showGlassSnackBar(context, 'Added to $name');
+                          },
+                        );
                       },
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
       ),

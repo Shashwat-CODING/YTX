@@ -68,6 +68,11 @@ class StorageService {
     await _historyBox.delete('list');
   }
 
+  Future<void> setHistory(List<YtifyResult> list) async {
+    final jsonList = list.map((item) => item.toJson()).toList();
+    await _historyBox.put('list', jsonList);
+  }
+
   // Playlists
   // Structure: Map<String, List<YtifyResult>> where key is playlist name
   
@@ -114,6 +119,22 @@ class StorageService {
     await _playlistsBox.put(name, jsonList);
   }
 
+  Future<void> setPlaylists(Map<String, List<YtifyResult>> playlists) async {
+    await _playlistsBox.clear();
+    for (final entry in playlists.entries) {
+      final jsonList = entry.value.map((item) => item.toJson()).toList();
+      await _playlistsBox.put(entry.key, jsonList);
+    }
+  }
+
+  Map<String, List<YtifyResult>> getAllPlaylists() {
+    final Map<String, List<YtifyResult>> playlists = {};
+    for (final key in _playlistsBox.keys) {
+      playlists[key.toString()] = getPlaylistSongs(key.toString());
+    }
+    return playlists;
+  }
+
   // Favorites
   static const String _favoritesBoxName = 'favorites';
   Box get _favoritesBox => Hive.box(_favoritesBoxName);
@@ -151,6 +172,11 @@ class StorageService {
     }
     
     final jsonList = favorites.map((item) => item.toJson()).toList();
+    await _favoritesBox.put('list', jsonList);
+  }
+
+  Future<void> setFavorites(List<YtifyResult> list) async {
+    final jsonList = list.map((item) => item.toJson()).toList();
     await _favoritesBox.put('list', jsonList);
   }
 
@@ -245,15 +271,16 @@ class StorageService {
     await _subscriptionsBox.put('list', jsonList);
   }
 
+  Future<void> setSubscriptions(List<YtifyResult> list) async {
+    final jsonList = list.map((item) => item.toJson()).toList();
+    await _subscriptionsBox.put('list', jsonList);
+  }
+
   // Settings
   Box get _settingsBox => Hive.box(_settingsBoxName);
   ValueListenable<Box> get settingsListenable => _settingsBox.listenable();
 
-  bool get autoQueueEnabled => _settingsBox.get('autoQueueEnabled', defaultValue: true);
 
-  Future<void> setAutoQueueEnabled(bool value) async {
-    await _settingsBox.put('autoQueueEnabled', value);
-  }
 
   String? get rapidApiKey => _settingsBox.get('rapidApiKey');
 
@@ -267,5 +294,29 @@ class StorageService {
 
   String get rapidApiCountryCode => _settingsBox.get('rapidApiCountryCode', defaultValue: 'IN');
   Future<void> setRapidApiCountryCode(String code) => _settingsBox.put('rapidApiCountryCode', code);
+
+  String? get postgresUri => _settingsBox.get('postgresUri');
+  Future<void> setPostgresUri(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _settingsBox.delete('postgresUri');
+    } else {
+      await _settingsBox.put('postgresUri', value);
+    }
+  }
+
+  // User Info
+  String? get username => _settingsBox.get('username');
+  String? get email => _settingsBox.get('email');
+
+  Future<void> setUserInfo(String username, String email) async {
+    await _settingsBox.put('username', username);
+    await _settingsBox.put('email', email);
+  }
+
+  Future<void> clearUserSession() async {
+    await _settingsBox.delete('username');
+    await _settingsBox.delete('email');
+    await _settingsBox.delete('postgresUri');
+  }
 }
 
