@@ -12,6 +12,7 @@ import 'package:ytx/services/notification_service.dart';
 import 'package:ytx/services/cloud_sync_service.dart';
 import 'package:ytx/widgets/main_layout.dart';
 import 'package:ytx/providers/theme_provider.dart';
+import 'package:ytx/services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,13 +55,22 @@ class MyApp extends ConsumerWidget {
       title: 'YTX',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: Builder(
-        builder: (context) {
-          final storage = ref.watch(storageServiceProvider);
-          if (storage.username == null) {
-            return const AuthScreen();
-          }
-          return const MainLayout(child: HomeScreen());
+      builder: (context, child) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final authState = ref.watch(authServiceProvider);
+            // Only show MainLayout (player/navbar) if authenticated
+            if (authState.isLoggedIn) {
+              return MainLayout(child: child!);
+            }
+            return child!;
+          },
+        );
+      },
+      home: Consumer(
+        builder: (context, ref, _) {
+          final authState = ref.watch(authServiceProvider);
+          return authState.isLoggedIn ? const HomeScreen() : const AuthScreen();
         },
       ),
     );

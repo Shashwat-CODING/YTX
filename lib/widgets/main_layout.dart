@@ -126,10 +126,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildNavItem(context, ref, FontAwesomeIcons.house, 0, selectedIndex),
-                _buildNavItem(context, ref, FontAwesomeIcons.magnifyingGlass, 1, selectedIndex),
                 _buildNavItem(context, ref, FontAwesomeIcons.compactDisc, 2, selectedIndex),
                 _buildNavItem(context, ref, FontAwesomeIcons.userGroup, 3, selectedIndex), // Subscriptions
-                _buildNavItem(context, ref, FontAwesomeIcons.gear, 4, selectedIndex),
                 _buildNavItem(context, ref, FontAwesomeIcons.rotate, 5, selectedIndex), // Sync
               ],
             ),
@@ -142,11 +140,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final isSelected = selectedIndex == index;
     return GestureDetector(
       onTap: () {
-        if (index < 4) {
+        if (index == 0 || index == 2 || index == 3) {
           ref.read(navigationIndexProvider.notifier).state = index;
           navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        } else if (index == 4) {
-           navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
         } else if (index == 5) {
            if (navigatorKey.currentContext != null) {
              showDialog(

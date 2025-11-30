@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:ytx/providers/player_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeData>((ref) {
   return ThemeNotifier(ref);
@@ -22,8 +23,8 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
       secondary: Color(0xFFFFFFFF),
       surface: Color(0xFF1E1E1E),
     ),
-    // Use system font (San Francisco on iOS)
-    fontFamily: '.SF Pro Text',
+    // Use Outfit (Google Sans alternative)
+    textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
     useMaterial3: true,
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
@@ -32,15 +33,14 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
       },
     ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF0F0F0F),
+    appBarTheme: AppBarTheme(
+      backgroundColor: const Color(0xFF0F0F0F),
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.outfit(
         color: Colors.white,
         fontSize: 17, // iOS standard title size
         fontWeight: FontWeight.w600,
-        fontFamily: '.SF Pro Text',
       ),
     ),
   );
@@ -68,7 +68,7 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
 
       state = ThemeData(
         brightness: Brightness.dark,
-    scaffoldBackgroundColor: Colors.transparent,
+        scaffoldBackgroundColor: Colors.transparent,
         colorScheme: ColorScheme.dark(
           primary: vibrantColor,
           secondary: dominantColor,
@@ -76,7 +76,7 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
           onPrimary: _getTextColorForBackground(vibrantColor),
           onSurface: Colors.white,
         ),
-        fontFamily: '.SF Pro Text',
+        textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
         useMaterial3: true,
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
@@ -85,15 +85,14 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
             TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
           },
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F0F0F),
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFF0F0F0F),
           elevation: 0,
           centerTitle: true,
-          titleTextStyle: TextStyle(
+          titleTextStyle: GoogleFonts.outfit(
             color: Colors.white,
             fontSize: 17,
             fontWeight: FontWeight.w600,
-            fontFamily: '.SF Pro Text',
           ),
         ),
         sliderTheme: SliderThemeData(
@@ -117,3 +116,4 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
         : Colors.black;
   }
 }
+

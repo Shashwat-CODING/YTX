@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:ytx/models/ytify_result.dart';
+import 'package:ytx/services/ytify_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
@@ -11,12 +12,14 @@ class StorageService {
   static const String _historyBoxName = 'history';
   static const String _playlistsBoxName = 'playlists';
   static const String _settingsBoxName = 'settings';
+  static const String _artistImagesBoxName = 'artist_images';
 
   Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(_historyBoxName);
     await Hive.openBox(_playlistsBoxName);
     await Hive.openBox(_settingsBoxName);
+    await Hive.openBox(_artistImagesBoxName);
     await _initFavorites();
     await _initDownloads();
     await _initSubscriptions();
@@ -274,6 +277,49 @@ class StorageService {
   Future<void> setSubscriptions(List<YtifyResult> list) async {
     final jsonList = list.map((item) => item.toJson()).toList();
     await _subscriptionsBox.put('list', jsonList);
+  }
+
+  // Artist Images
+  Box get _artistImagesBox => Hive.box(_artistImagesBoxName);
+  ValueListenable<Box> get artistImagesListenable => _artistImagesBox.listenable();
+
+  String? getArtistImage(String artistId) {
+    return _artistImagesBox.get(artistId);
+  }
+
+  Future<void> setArtistImage(String artistId, String url) async {
+    await _artistImagesBox.put(artistId, url);
+  }
+
+  final _fetchingArtists = <String>{};
+
+  Future<void> fetchAndCacheArtistImage(String artistId) async {
+    if (_fetchingArtists.contains(artistId)) return;
+    if (getArtistImage(artistId) != null) return; // Already cached
+
+    _fetchingArtists.add(artistId);
+
+    try {
+      // We need YtifyApiService here. Since StorageService is a provider, 
+      // we can't easily inject it unless we pass it or use a locator.
+      // But YtifyApiService is a simple class, so we can instantiate it.
+      // Ideally, we should use ref.read(ytifyApiServiceProvider) if it existed.
+      // For now, simple instantiation is fine as per previous pattern.
+      final apiService = YtifyApiService(); 
+      final details = await apiService.getArtistDetails(artistId);
+      if (details != null && details.artistAvatar.isNotEmpty) {
+        await setArtistImage(artistId, details.artistAvatar);
+      } else {
+        await setArtistImage(artistId, 'INVALID_ARTIST');
+      }
+    } catch (e) {
+      debugPrint('Error fetching artist image for $artistId: $e');
+      // Optionally mark as invalid on error to stop retrying?
+      // For now, let's keep retrying on error (e.g. network issue)
+      // But if it's a 404, the API service might return null, so handled above.
+    } finally {
+      _fetchingArtists.remove(artistId);
+    }
   }
 
   // Settings

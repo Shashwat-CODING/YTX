@@ -16,169 +16,167 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentQuality = ref.watch(settingsProvider);
 
-    return GlobalBackground(
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          title: const Text('Settings'),
-          centerTitle: true,
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSection('Audio Quality', [
-                  _buildQualityOption(context, ref, 'High', AudioQuality.high, currentQuality),
-                  const Divider(height: 1, color: Colors.white10),
-                  _buildQualityOption(context, ref, 'Medium', AudioQuality.medium, currentQuality),
-                  const Divider(height: 1, color: Colors.white10),
-                  _buildQualityOption(context, ref, 'Low', AudioQuality.low, currentQuality),
-                ]),
+        title: const Text('Settings'),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSection('Audio Quality', [
+                _buildQualityOption(context, ref, 'High', AudioQuality.high, currentQuality),
+                const Divider(height: 1, color: Colors.white10),
+                _buildQualityOption(context, ref, 'Medium', AudioQuality.medium, currentQuality),
+                const Divider(height: 1, color: Colors.white10),
+                _buildQualityOption(context, ref, 'Low', AudioQuality.low, currentQuality),
+              ]),
 
-                Consumer(
-                  builder: (context, ref, _) {
-                    final storage = ref.watch(storageServiceProvider);
-                    return ValueListenableBuilder(
-                      valueListenable: storage.settingsListenable,
-                      builder: (context, box, _) {
-                        final apiKey = storage.rapidApiKey;
-                        final countryCode = storage.rapidApiCountryCode;
-                        
-                        return _buildSection('Playback', [
-                          ListTile(
-                            title: const Text('Ignore Battery Optimizations', style: TextStyle(color: Colors.white)),
-                            subtitle: Text('Prevent app from being suspended', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                            trailing: const Icon(Icons.battery_alert, color: Colors.white),
-                            onTap: () async => await Permission.ignoreBatteryOptimizations.request(),
+              Consumer(
+                builder: (context, ref, _) {
+                  final storage = ref.watch(storageServiceProvider);
+                  return ValueListenableBuilder(
+                    valueListenable: storage.settingsListenable,
+                    builder: (context, box, _) {
+                      final apiKey = storage.rapidApiKey;
+                      final countryCode = storage.rapidApiCountryCode;
+                      
+                      return _buildSection('Playback', [
+                        ListTile(
+                          title: const Text('Ignore Battery Optimizations', style: TextStyle(color: Colors.white)),
+                          subtitle: Text('Prevent app from being suspended', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                          trailing: const Icon(Icons.battery_alert, color: Colors.white),
+                          onTap: () async => await Permission.ignoreBatteryOptimizations.request(),
+                        ),
+                        const Divider(height: 1, color: Colors.white10),
+                        ListTile(
+                          title: const Text('RapidAPI Key', style: TextStyle(color: Colors.white)),
+                          subtitle: Text(
+                            apiKey != null && apiKey.isNotEmpty ? 'Key set' : 'Not set',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
                           ),
-                          const Divider(height: 1, color: Colors.white10),
-                          ListTile(
-                            title: const Text('RapidAPI Key', style: TextStyle(color: Colors.white)),
-                            subtitle: Text(
-                              apiKey != null && apiKey.isNotEmpty ? 'Key set' : 'Not set',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                            ),
-                            trailing: const Icon(Icons.edit, color: Colors.white),
-                            onTap: () => _showApiKeyDialog(context, storage),
+                          trailing: const Icon(Icons.edit, color: Colors.white),
+                          onTap: () => _showApiKeyDialog(context, storage),
+                        ),
+                        const Divider(height: 1, color: Colors.white10),
+                        ListTile(
+                          title: const Text('RapidAPI Country Code', style: TextStyle(color: Colors.white)),
+                          subtitle: Text(
+                            countryCode.isNotEmpty ? 'Current: $countryCode' : 'Default: IN',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
                           ),
-                          const Divider(height: 1, color: Colors.white10),
-                          ListTile(
-                            title: const Text('RapidAPI Country Code', style: TextStyle(color: Colors.white)),
-                            subtitle: Text(
-                              countryCode.isNotEmpty ? 'Current: $countryCode' : 'Default: IN',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                            ),
-                            trailing: const Icon(Icons.public, color: Colors.white),
-                            onTap: () => _showApiCountryDialog(context, storage),
-                          ),
-                        ]);
-                      },
-                    );
-                  },
-                ),
+                          trailing: const Icon(Icons.public, color: Colors.white),
+                          onTap: () => _showApiCountryDialog(context, storage),
+                        ),
+                      ]);
+                    },
+                  );
+                },
+              ),
 
-                Consumer(
-                  builder: (context, ref, _) {
-                    final storage = ref.watch(storageServiceProvider);
-                    return ValueListenableBuilder(
-                      valueListenable: storage.settingsListenable,
-                      builder: (context, box, _) {
-                        final postgresUri = storage.postgresUri;
-                        return _buildSection('Cloud Sync', [
-                          // Show User Info if logged in
-                          if (storage.username != null) ...[
-                            ListTile(
-                              leading: const Icon(Icons.person, color: Colors.white),
-                              title: Text('Logged in as ${storage.username}', style: const TextStyle(color: Colors.white)),
-                              subtitle: Text(storage.email ?? '', style: const TextStyle(color: Colors.grey)),
-                              trailing: TextButton(
-                                onPressed: () async {
-                                  await ref.read(authServiceProvider).logout();
-                                  if (context.mounted) {
-                                    Navigator.of(context).pushAndRemoveUntil(
-                                      MaterialPageRoute(builder: (_) => const AuthScreen()),
-                                      (route) => false,
-                                    );
-                                  }
-                                },
-                                child: const Text('Logout', style: TextStyle(color: Colors.red)),
-                              ),
-                            ),
-                          ] else ...[
-                            // Show manual config if not logged in
-                            ListTile(
-                              leading: const Icon(Icons.storage, color: Colors.white),
-                              title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
-                              subtitle: Text(
-                                storage.postgresUri != null && storage.postgresUri!.isNotEmpty ? 'Configured' : 'Not Configured',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                              onTap: () {
-                                _showTextInputDialog(
-                                  context: context,
-                                  title: 'PostgreSQL URI',
-                                  initialValue: storage.postgresUri,
-                                  onSubmitted: (value) {
-                                    storage.setPostgresUri(value);
-                                  },
-                                );
-                              },
-                            ),
-                            const Divider(height: 1, color: Colors.white10),
-                            ListTile(
-                              leading: const Icon(Icons.login, color: Colors.white),
-                              title: const Text('Login / Signup', style: TextStyle(color: Colors.white)),
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const AuthScreen()),
-                                );
-                              },
-                            ),
-                          ],
-                          if (postgresUri != null && postgresUri.isNotEmpty) ...[
-                            const Divider(height: 1, color: Colors.white10),
-                            ListTile(
-                              title: const Text('Sync Now', style: TextStyle(color: Colors.white)),
-                              subtitle: Text('Sync data with cloud', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                              trailing: const Icon(Icons.sync, color: Colors.white),
-                              onTap: () async {
-                                try {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing...')));
-                                  await ref.read(cloudSyncServiceProvider).syncData();
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync successful!')));
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
-                                  }
+              Consumer(
+                builder: (context, ref, _) {
+                  final storage = ref.watch(storageServiceProvider);
+                  return ValueListenableBuilder(
+                    valueListenable: storage.settingsListenable,
+                    builder: (context, box, _) {
+                      final postgresUri = storage.postgresUri;
+                      return _buildSection('Cloud Sync', [
+                        // Show User Info if logged in
+                        if (storage.username != null) ...[
+                          ListTile(
+                            leading: const Icon(Icons.person, color: Colors.white),
+                            title: Text('Logged in as ${storage.username}', style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(storage.email ?? '', style: const TextStyle(color: Colors.grey)),
+                            trailing: TextButton(
+                              onPressed: () async {
+                                await ref.read(authServiceProvider).logout();
+                                if (context.mounted) {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                                    (route) => false,
+                                  );
                                 }
                               },
+                              child: const Text('Logout', style: TextStyle(color: Colors.red)),
                             ),
-                          ],
-                        ]);
-                      },
-                    );
+                          ),
+                        ] else ...[
+                          // Show manual config if not logged in
+                          ListTile(
+                            leading: const Icon(Icons.storage, color: Colors.white),
+                            title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
+                            subtitle: Text(
+                              storage.postgresUri != null && storage.postgresUri!.isNotEmpty ? 'Configured' : 'Not Configured',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            onTap: () {
+                              _showTextInputDialog(
+                                context: context,
+                                title: 'PostgreSQL URI',
+                                initialValue: storage.postgresUri,
+                                onSubmitted: (value) {
+                                  storage.setPostgresUri(value);
+                                },
+                              );
+                            },
+                          ),
+                          const Divider(height: 1, color: Colors.white10),
+                          ListTile(
+                            leading: const Icon(Icons.login, color: Colors.white),
+                            title: const Text('Login / Signup', style: TextStyle(color: Colors.white)),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const AuthScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                        if (postgresUri != null && postgresUri.isNotEmpty) ...[
+                          const Divider(height: 1, color: Colors.white10),
+                          ListTile(
+                            title: const Text('Sync Now', style: TextStyle(color: Colors.white)),
+                            subtitle: Text('Sync data with cloud', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                            trailing: const Icon(Icons.sync, color: Colors.white),
+                            onTap: () async {
+                              try {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing...')));
+                                await ref.read(cloudSyncServiceProvider).syncData();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync successful!')));
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ]);
+                    },
+                  );
+                },
+              ),
+
+              _buildSection('App Info', [
+                ListTile(
+                  title: const Text('About', style: TextStyle(color: Colors.white)),
+                  subtitle: Text('Version 1.0.0', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                  trailing: const Icon(Icons.info_outline, color: Colors.white),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
                   },
                 ),
-
-                _buildSection('App Info', [
-                  ListTile(
-                    title: const Text('About', style: TextStyle(color: Colors.white)),
-                    subtitle: Text('Version 1.0.0', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                    trailing: const Icon(Icons.info_outline, color: Colors.white),
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
-                    },
-                  ),
-                ]),
-                
-                const SizedBox(height: 160), // Increased padding
-              ],
-            ),
+              ]),
+              
+              const SizedBox(height: 160), // Increased padding
+            ],
           ),
         ),
       ),

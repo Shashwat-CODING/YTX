@@ -2,12 +2,14 @@ import 'package:ytx/models/ytify_result.dart';
 
 class ArtistDetails {
   final String artistName;
+  final String artistAvatar;
   final String playlistId;
   final List<RecommendedArtist> recommendedArtists;
   final List<FeaturedPlaylist> featuredOnPlaylists;
 
   ArtistDetails({
     required this.artistName,
+    required this.artistAvatar,
     required this.playlistId,
     required this.recommendedArtists,
     required this.featuredOnPlaylists,
@@ -16,6 +18,7 @@ class ArtistDetails {
   factory ArtistDetails.fromJson(Map<String, dynamic> json) {
     return ArtistDetails(
       artistName: json['artistName'] ?? '',
+      artistAvatar: json['artistAvatar'] ?? '',
       playlistId: json['playlistId'] ?? '',
       recommendedArtists: (json['recommendedArtists'] as List?)
               ?.map((e) => RecommendedArtist.fromJson(e))

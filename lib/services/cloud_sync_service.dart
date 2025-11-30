@@ -229,18 +229,18 @@ class CloudSyncService {
   List<YtifyResult> _mergeLists(List<YtifyResult> local, List<YtifyResult> cloud) {
     final Map<String, YtifyResult> merged = {};
     
-    // Add cloud items first
-    for (var item in cloud) {
-      final id = item.videoId ?? item.browseId ?? item.title; // Use title as fallback ID if needed
-      if (id != null) merged[id] = item;
-    }
-    
-    // Add/Overwrite with local items (assuming local might be newer, or just union)
-    // Actually for a simple union, order doesn't matter much unless we have timestamps.
-    // Let's just ensure we have all unique items.
+    // Add local items first to preserve their order (newest first)
     for (var item in local) {
       final id = item.videoId ?? item.browseId ?? item.title;
       if (id != null) merged[id] = item;
+    }
+    
+    // Add cloud items that are not in local
+    for (var item in cloud) {
+      final id = item.videoId ?? item.browseId ?? item.title;
+      if (id != null && !merged.containsKey(id)) {
+        merged[id] = item;
+      }
     }
     
     return merged.values.toList();

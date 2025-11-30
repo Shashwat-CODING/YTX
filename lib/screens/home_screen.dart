@@ -8,6 +8,13 @@ import 'package:ytx/screens/library_screen.dart';
 import 'package:ytx/screens/subscribed_channels_screen.dart';
 import 'package:ytx/widgets/horizontal_result_card.dart';
 import 'package:ytx/models/ytify_result.dart';
+import 'package:ytx/services/storage_service.dart';
+import 'package:ytx/providers/player_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ytx/screens/artist_screen.dart';
+import 'package:ytx/services/ytify_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:ytx/screens/settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -34,201 +41,508 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildExploreTab(BuildContext context, WidgetRef ref) {
-    final newestSongsAsync = ref.watch(newestSongsProvider);
-    final newestVideosAsync = ref.watch(newestVideosProvider);
-    final trendingPlaylistsAsync = ref.watch(trendingPlaylistsProvider);
+    final storage = ref.watch(storageServiceProvider);
     
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
         slivers: [
+          // Greeting Section
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
+            child: _buildGreeting(context, ref),
+          ),
+
+          // Speed Dial Section
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Explore',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Icon(Icons.history, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Speed dial',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                      ),
+                      const Spacer(),
+                      // const Icon(Icons.chevron_right, color: Colors.white),
+                    ],
                   ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.cast, color: Colors.white),
-                    onPressed: () {},
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    onPressed: () {},
-                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
           
-          // Newest Songs Section
+          _buildSpeedDial(context, ref),
+
+          // Favorites Section
           SliverToBoxAdapter(
-            child: _buildSongSection(
-              context, 
-              title: 'Songs', 
-              contentAsync: newestSongsAsync,
-            ),
+            child: _buildFavoritesSection(context, ref),
           ),
 
-          // Newest Videos Section
+          // Artists Section
           SliverToBoxAdapter(
-            child: _buildSection(
-              context, 
-              title: 'Newest Videos', 
-              contentAsync: newestVideosAsync,
-              isVideo: true,
-            ),
-          ),
-
-          // Trending Playlists Section
-          SliverToBoxAdapter(
-            child: _buildSection(
-              context, 
-              title: 'Trending Playlists', 
-              contentAsync: trendingPlaylistsAsync,
-              isVideo: false, // Playlists can be square
-            ),
+            child: _buildArtistsSection(context, ref),
           ),
           
-          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 200)),
         ],
       ),
     );
   }
 
-  Widget _buildSongSection(
-    BuildContext context, {
-    required String title,
-    required AsyncValue<List<YtifyResult>> contentAsync,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 280, // Height for 4 items vertically (approx 60-70 each)
-          child: contentAsync.when(
-            data: (results) {
-              if (results.isEmpty) {
-                return const Center(child: Text('No content', style: TextStyle(color: Colors.grey)));
-              }
-              
-              // Chunk results into groups of 4
-              final chunks = <List<YtifyResult>>[];
-              for (var i = 0; i < results.length; i += 4) {
-                chunks.add(results.sublist(i, i + 4 > results.length ? results.length : i + 4));
-              }
+  Widget _buildGreeting(BuildContext context, WidgetRef ref) {
+    final storage = ref.watch(storageServiceProvider);
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 12) {
+      greeting = 'Good morning';
+    } else if (hour < 17) {
+      greeting = 'Good afternoon';
+    } else {
+      greeting = 'Good evening';
+    }
 
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: chunks.length,
-                itemBuilder: (context, index) {
-                  final chunk = chunks[index];
-                  return Container(
-                    width: MediaQuery.of(context).size.width * 0.85, // 85% of screen width
-                    margin: const EdgeInsets.only(right: 16),
-                    // decoration: BoxDecoration(
-                    //   color: Colors.white.withValues(alpha: 0.05),
-                    //   borderRadius: BorderRadius.circular(16),
-                    //   border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                    // ),
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      children: chunk.map((result) => Expanded(
-                        child: ResultTile(
-                          result: result,
-                          compact: true, 
-                        ),
-                      )).toList(),
+    final username = storage.username ?? 'User';
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                greeting,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  );
-                },
+              ),
+              Text(
+                username,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey[400],
+                    ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error', style: const TextStyle(color: Colors.red))),
+            icon: const Icon(Icons.search, color: Colors.white),
           ),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildSection(
-    BuildContext context, {
-    required String title,
-    required AsyncValue<List<YtifyResult>> contentAsync,
-    required bool isVideo,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: isVideo ? 240 : 260, // Increased height for playlists to prevent overflow
-          child: contentAsync.when(
-            data: (results) {
-              if (results.isEmpty) {
-                return const Center(child: Text('No content', style: TextStyle(color: Colors.grey)));
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            offset: const Offset(0, 50),
+            color: const Color(0xFF1E1E1E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (value) {
+              if (value == 'settings') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              } else if (value == 'account') {
+                // Show account info
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    title: const Text('Account Info', style: TextStyle(color: Colors.white)),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Username: $username', style: const TextStyle(color: Colors.white70)),
+                        // Add more account info here if available
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
               }
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: results.length,
-                itemBuilder: (context, index) {
-                  return HorizontalResultCard(
-                    result: results[index],
-                    isVideo: isVideo,
-                    width: isVideo ? 240 : 160, // Wider for videos
-                  );
-                },
-              );
             },
-            loading: () => ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 3,
-              itemBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Container(
-                  width: isVideo ? 240 : 160,
-                  color: Colors.white.withValues(alpha: 0.05),
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'account',
+                child: Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.white, size: 20),
+                    SizedBox(width: 12),
+                    Text('Account Info', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.white, size: 20),
+                    SizedBox(width: 12),
+                    Text('Settings', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+            child: ClipOval(
+              child: SvgPicture.network(
+                'https://api.dicebear.com/9.x/rings/svg?seed=$username',
+                height: 40,
+                width: 40,
+                placeholderBuilder: (BuildContext context) => Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const CircularProgressIndicator(),
                 ),
               ),
             ),
-            error: (error, stack) => Center(child: Text('Error: $error', style: const TextStyle(color: Colors.red))),
           ),
-        ),
-        const SizedBox(height: 16),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpeedDial(BuildContext context, WidgetRef ref) {
+    final storage = ref.watch(storageServiceProvider);
+    return ValueListenableBuilder(
+      valueListenable: storage.historyListenable,
+      builder: (context, box, _) {
+        final history = storage.getHistory();
+        // Filter for songs only and take top 8
+        final speedDialItems = history
+            .where((item) => item.resultType != 'video')
+            .take(8)
+            .toList();
+
+        if (speedDialItems.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text('Play some music to see it here!', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 8.0,
+              crossAxisSpacing: 8.0,
+              childAspectRatio: 1.0, // Square items
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index < speedDialItems.length) {
+                  final item = speedDialItems[index];
+                  return GestureDetector(
+                    onTap: () {
+                       ref.read(audioHandlerProvider).playVideo(item);
+                    },
+                    child: _buildSpeedDialItem(context, ref, item),
+                  );
+                } else {
+                  // Library Item (9th item or last item)
+                  return GestureDetector(
+                    onTap: () {
+                      ref.read(navigationIndexProvider.notifier).state = 2; // Switch to Library tab
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        image: const DecorationImage(
+                          image: CachedNetworkImageProvider('https://cdn.dribbble.com/userupload/5195818/file/original-192782f93efd6f758f26c5a471163ecc.jpg?resize=752x752&vertical=center'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              },
+              childCount: speedDialItems.length + 1,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSpeedDialItem(BuildContext context, WidgetRef ref, YtifyResult item) {
+     final imageUrl = item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '';
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         Expanded(
+           child: Container(
+             decoration: BoxDecoration(
+               borderRadius: BorderRadius.circular(8),
+               color: Colors.grey[900],
+               image: imageUrl.isNotEmpty
+                   ? DecorationImage(
+                       image: CachedNetworkImageProvider(imageUrl),
+                       fit: BoxFit.cover,
+                     )
+                   : null,
+             ),
+             child: Stack(
+               children: [
+                 Positioned.fill(
+                   child: Container(
+                     decoration: BoxDecoration(
+                       borderRadius: BorderRadius.circular(8),
+                       gradient: LinearGradient(
+                         begin: Alignment.topCenter,
+                         end: Alignment.bottomCenter,
+                         colors: [
+                           Colors.transparent,
+                           Colors.black.withOpacity(0.7),
+                         ],
+                         stops: const [0.6, 1.0],
+                       ),
+                     ),
+                   ),
+                 ),
+                 Positioned(
+                   bottom: 8,
+                   left: 8,
+                   right: 8,
+                   child: Text(
+                     item.title,
+                     maxLines: 2,
+                     overflow: TextOverflow.ellipsis,
+                     style: const TextStyle(
+                       color: Colors.white,
+                       fontWeight: FontWeight.bold,
+                       fontSize: 12,
+                     ),
+                     textAlign: TextAlign.left,
+                   ),
+                 ),
+               ],
+             ),
+           ),
+         ),
+       ],
+     );
+  }
+
+  Widget _buildFavoritesSection(BuildContext context, WidgetRef ref) {
+    final storage = ref.watch(storageServiceProvider);
+    return ValueListenableBuilder(
+      valueListenable: storage.favoritesListenable,
+      builder: (context, box, _) {
+        final favorites = storage.getFavorites();
+        if (favorites.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Favorites',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 160,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: favorites.length,
+                itemBuilder: (context, index) {
+                  final item = favorites[index];
+                  final imageUrl = item.thumbnails.isNotEmpty ? item.thumbnails.last.url : '';
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: GestureDetector(
+                      onTap: () {
+                        ref.read(audioHandlerProvider).playVideo(item);
+                      },
+                      child: SizedBox(
+                        width: 120,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: imageUrl.isNotEmpty 
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 120,
+                                    width: 120,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) => Container(
+                                      height: 120,
+                                      width: 120,
+                                      color: Colors.grey[800],
+                                      child: const Icon(Icons.music_note, color: Colors.white),
+                                    ),
+                                  )
+                                : Container(
+                                    height: 120,
+                                    width: 120,
+                                    color: Colors.grey[800],
+                                    child: const Icon(Icons.music_note, color: Colors.white),
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildArtistsSection(BuildContext context, WidgetRef ref) {
+    final storage = ref.watch(storageServiceProvider);
+    
+    final history = storage.getHistory();
+    final favorites = storage.getFavorites();
+    
+    final uniqueArtists = <String, YtifyArtist>{};
+    final seenNames = <String>{};
+
+    for (var item in [...favorites, ...history]) {
+      if (item.artists != null) {
+        for (var artist in item.artists!) {
+          if (artist.id != null && artist.name.isNotEmpty) {
+             if (!uniqueArtists.containsKey(artist.id) && !seenNames.contains(artist.name)) {
+               uniqueArtists[artist.id!] = artist;
+               seenNames.add(artist.name);
+             }
+          }
+        }
+      }
+    }
+    
+    final artistList = uniqueArtists.values.toList();
+
+    if (artistList.isEmpty) return const SizedBox.shrink();
+
+    return ValueListenableBuilder(
+      valueListenable: storage.artistImagesListenable,
+      builder: (context, box, _) {
+        final validArtists = artistList.where((artist) {
+          final img = storage.getArtistImage(artist.id!);
+          return img != 'INVALID_ARTIST';
+        }).toList();
+
+        if (validArtists.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Artists',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 140,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: validArtists.length,
+                itemBuilder: (context, index) {
+                  final artist = validArtists[index];
+                  final cachedImage = storage.getArtistImage(artist.id!);
+                  
+                  if (cachedImage == null) {
+                    // Trigger fetch in background
+                    storage.fetchAndCacheArtistImage(artist.id!);
+                  }
+
+                  final imageUrl = cachedImage ?? '';
+
+                  return GestureDetector(
+                    onTap: () {
+                      if (artist.id != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ArtistScreen(
+                              browseId: artist.id!,
+                              artistName: artist.name,
+                              thumbnailUrl: imageUrl,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.grey[800],
+                            backgroundImage: imageUrl.isNotEmpty ? CachedNetworkImageProvider(imageUrl) : null,
+                            child: imageUrl.isEmpty 
+                                ? Text(
+                                    artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+                                    style: const TextStyle(color: Colors.white, fontSize: 32),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            artist.name,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
