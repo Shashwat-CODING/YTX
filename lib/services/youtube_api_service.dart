@@ -195,7 +195,7 @@ class YouTubeApiService {
       if (filter == 'videos' || filter == 'channels') {
         uri = Uri.parse('https://ytify-backend.vercel.app/api/yt_search').replace(queryParameters: queryParams);
       } else {
-        uri = Uri.parse('https://ytify-backend.vercel.app/api/search').replace(queryParameters: queryParams);
+        uri = Uri.parse('https://heujjsnxhjptqmanwadg.supabase.co/functions/v1/ytmusic-search').replace(queryParameters: queryParams);
       }
 
       final response = await http.get(uri);
@@ -261,7 +261,7 @@ class YouTubeApiService {
 
   Future<List<String>> getSearchSuggestions(String query) async {
     try {
-      final uri = Uri.parse('https://ytify-backend.vercel.app/api/search/suggestions').replace(queryParameters: {
+      final uri = Uri.parse('https://heujjsnxhjptqmanwadg.supabase.co/functions/v1/ytmusic-search/suggestions').replace(queryParameters: {
         'q': query,
         'music': '1',
       });

@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:ytx/models/ytify_result.dart';
 import 'package:ytx/services/ytify_service.dart';
 import 'package:ytx/services/music_api_service.dart';
+import 'package:http/http.dart' as http;
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
@@ -13,6 +14,7 @@ class StorageService {
   static const String _settingsBoxName = 'settings';
   static const String _downloadsBoxName = 'downloads';
   static const String _artistImagesBoxName = 'artist_images';
+  static const String _userAvatarBoxName = 'user_avatar';
 
   MusicApiService? _api;
   
@@ -29,14 +31,10 @@ class StorageService {
     await Hive.openBox(_settingsBoxName);
     await Hive.openBox(_downloadsBoxName);
     await Hive.openBox(_artistImagesBoxName);
+    await Hive.openBox(_userAvatarBoxName);
     
     _api = MusicApiService(this);
     debugPrint('StorageService initialized with API');
-    
-    // Fetch initial data if logged in
-    if (authToken != null) {
-      await refreshAll();
-    }
   }
 
   Future<void> refreshAll() async {
@@ -430,10 +428,67 @@ class StorageService {
     await _settingsBox.delete('email');
     await _settingsBox.delete('authToken');
     // Clear in-memory state
-    _historyNotifier.value = [];
-    _favoritesNotifier.value = [];
-    _subscriptionsNotifier.value = [];
     _playlistsNotifier.value = {};
+    _subscriptionsNotifier.value = [];
+  }
+
+  // User Avatar (Local Cache)
+  Box get _userAvatarBox => Hive.box(_userAvatarBoxName);
+  ValueListenable<Box> get userAvatarListenable => _userAvatarBox.listenable();
+
+  String? getUserAvatar() {
+    return _userAvatarBox.get('avatar_svg');
+  }
+
+  Future<void> fetchAndCacheUserAvatar() async {
+    final user = username;
+    if (user == null) return;
+
+    try {
+      // We are using http to fetch the SVG string
+      // Since we don't have http package imported in this file, we can use YtifyApiService or just rely on the UI to use CachedNetworkImage if it was an image.
+      // But the requirement says "cache avtar image". The current implementation uses SvgPicture.network.
+      // SvgPicture.network does caching by default if configured, but maybe not persistent across restarts if not configured right.
+      // However, the user specifically asked to "cache avtar image".
+      // Let's download the SVG content and store it as a string.
+      
+      // We need to import http. But wait, adding imports might be messy with replace_file_content if not careful.
+      // Let's check imports first.
+      // The file imports:
+      // import 'package:flutter/foundation.dart';
+      // import 'package:flutter_riverpod/flutter_riverpod.dart';
+      // import 'package:hive_flutter/hive_flutter.dart';
+      // import 'package:ytx/models/ytify_result.dart';
+      // import 'package:ytx/services/ytify_service.dart';
+      // import 'package:ytx/services/music_api_service.dart';
+      
+      // We can use a simple http get.
+      // Actually, `YtifyApiService` might have a dio instance or similar.
+      // Let's just store the URL and let `CachedNetworkImage` handle it? 
+      // No, the current implementation uses `SvgPicture.network`.
+      // `flutter_svg` supports caching but maybe the user wants it offline.
+      // Storing the SVG string is a good way.
+      
+      // I'll add the method to fetch and store. I will need to add `import 'package:http/http.dart' as http;` to the top of the file.
+      // But I can't add imports easily with this tool call if I'm targeting the bottom.
+      // I'll do this in two steps. First add the methods, then add the import.
+      
+      // Actually, I can just use the URL for now and let the UI handle it, but the user asked to "cache" it.
+      // If I store the SVG string, I can use `SvgPicture.string`.
+      
+      // Let's assume I'll add the import in a separate call.
+      
+      final url = 'https://api.dicebear.com/9.x/rings/svg?seed=$user';
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        await _userAvatarBox.put('avatar_svg', response.body);
+      } else {
+        debugPrint('Failed to fetch avatar: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching user avatar: $e');
+    }
   }
 }
 

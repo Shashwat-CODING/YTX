@@ -18,11 +18,27 @@ import 'package:ytx/screens/settings_screen.dart';
 import 'package:ytx/widgets/glass_container.dart';
 import 'package:ytx/widgets/offline_indicator.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger initial data load after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final storage = ref.read(storageServiceProvider);
+      storage.refreshAll();
+      storage.fetchAndCacheUserAvatar();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = ref.watch(navigationIndexProvider);
 
     return Scaffold(
@@ -215,14 +231,31 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
             child: ClipOval(
-              child: SvgPicture.network(
-                'https://api.dicebear.com/9.x/rings/svg?seed=$username',
-                height: 40,
-                width: 40,
-                placeholderBuilder: (BuildContext context) => Container(
-                  padding: const EdgeInsets.all(10.0),
-                  child: const CircularProgressIndicator(),
-                ),
+              child: ValueListenableBuilder(
+                valueListenable: storage.userAvatarListenable,
+                builder: (context, box, _) {
+                  final cachedSvg = storage.getUserAvatar();
+                  if (cachedSvg != null) {
+                    return SvgPicture.string(
+                      cachedSvg,
+                      height: 40,
+                      width: 40,
+                      placeholderBuilder: (BuildContext context) => Container(
+                        padding: const EdgeInsets.all(10.0),
+                        child: const CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  return SvgPicture.network(
+                    'https://api.dicebear.com/9.x/rings/svg?seed=$username',
+                    height: 40,
+                    width: 40,
+                    placeholderBuilder: (BuildContext context) => Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: const CircularProgressIndicator(),
+                    ),
+                  );
+                },
               ),
             ),
           ),

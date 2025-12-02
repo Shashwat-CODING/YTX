@@ -6,7 +6,7 @@ import 'package:ytx/models/ytify_result.dart';
 import 'package:ytx/models/artist_details.dart';
 
 class YtifyApiService {
-  static const String _baseUrl = 'https://ytify-backend.vercel.app/api/search';
+  static const String _baseUrl = 'https://heujjsnxhjptqmanwadg.supabase.co/functions/v1/ytmusic-search';
   static const String _ytSearchBaseUrl = 'https://ytify-backend.vercel.app/api/yt_search';
   static const String _artistBaseUrl = 'https://ytify-backend.vercel.app/api/artist';
   static const String _playlistBaseUrl = 'https://ytify-backend.vercel.app/api/playlists';
