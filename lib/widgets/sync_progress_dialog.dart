@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ytx/services/cloud_sync_service.dart';
+import 'package:ytx/services/storage_service.dart';
 
 class SyncProgressDialog extends ConsumerStatefulWidget {
   const SyncProgressDialog({super.key});
@@ -12,7 +12,6 @@ class SyncProgressDialog extends ConsumerStatefulWidget {
 
 class _SyncProgressDialogState extends ConsumerState<SyncProgressDialog> {
   final List<String> _logs = [];
-  StreamSubscription<String>? _subscription;
   final ScrollController _scrollController = ScrollController();
   bool _isSyncing = true;
 
@@ -22,31 +21,39 @@ class _SyncProgressDialogState extends ConsumerState<SyncProgressDialog> {
     _startSync();
   }
 
-  Future<void> _startSync() async {
-    final syncService = ref.read(cloudSyncServiceProvider);
-    
-    // Subscribe to logs
-    _subscription = syncService.logStream.listen((log) {
-      if (mounted) {
-        setState(() {
-          _logs.add(log);
-        });
-        // Auto-scroll to bottom
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-            );
-          }
-        });
-      }
-    });
+  void _log(String message) {
+    if (mounted) {
+      setState(() {
+        _logs.add(message);
+      });
+      // Auto-scroll to bottom
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
 
+  Future<void> _startSync() async {
+    final storage = ref.read(storageServiceProvider);
+    
     try {
-      await syncService.syncData();
-      // _log('Sync Completed Successfully'); // Logged by service
+      _log('Starting sync...');
+      
+      if (storage.authToken == null) {
+        _log('Error: Not logged in.');
+        setState(() => _isSyncing = false);
+        return;
+      }
+
+      _log('Fetching data from API...');
+      await storage.refreshAll();
+      _log('Sync Completed Successfully');
       
       // Auto-close after delay
       if (mounted) {
@@ -59,7 +66,7 @@ class _SyncProgressDialogState extends ConsumerState<SyncProgressDialog> {
         }
       }
     } catch (e) {
-      // Error is already logged by service
+      _log('Error: $e');
       if (mounted) {
         setState(() {
           _isSyncing = false;
@@ -70,7 +77,6 @@ class _SyncProgressDialogState extends ConsumerState<SyncProgressDialog> {
 
   @override
   void dispose() {
-    _subscription?.cancel();
     _scrollController.dispose();
     super.dispose();
   }

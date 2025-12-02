@@ -3,194 +3,282 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:ytx/models/ytify_result.dart';
 import 'package:ytx/services/ytify_service.dart';
+import 'package:ytx/services/music_api_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
 });
 
 class StorageService {
-  static const String _historyBoxName = 'history';
-  static const String _playlistsBoxName = 'playlists';
   static const String _settingsBoxName = 'settings';
+  static const String _downloadsBoxName = 'downloads';
   static const String _artistImagesBoxName = 'artist_images';
+
+  MusicApiService? _api;
+  
+  // In-memory state with Notifiers
+  final ValueNotifier<List<YtifyResult>> _historyNotifier = ValueNotifier([]);
+  final ValueNotifier<List<YtifyResult>> _favoritesNotifier = ValueNotifier([]);
+  final ValueNotifier<List<YtifyResult>> _subscriptionsNotifier = ValueNotifier([]);
+  final ValueNotifier<Map<String, List<YtifyResult>>> _playlistsNotifier = ValueNotifier({});
+  final ValueNotifier<bool> isLoadingNotifier = ValueNotifier(false);
+  final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
   Future<void> init() async {
     await Hive.initFlutter();
-    await Hive.openBox(_historyBoxName);
-    await Hive.openBox(_playlistsBoxName);
     await Hive.openBox(_settingsBoxName);
+    await Hive.openBox(_downloadsBoxName);
     await Hive.openBox(_artistImagesBoxName);
-    await _initFavorites();
-    await _initDownloads();
-    await _initSubscriptions();
+    
+    _api = MusicApiService(this);
+    debugPrint('StorageService initialized with API');
+    
+    // Fetch initial data if logged in
+    if (authToken != null) {
+      await refreshAll();
+    }
   }
 
-  Box get _historyBox => Hive.box(_historyBoxName);
-  Box get _playlistsBox => Hive.box(_playlistsBoxName);
+  Future<void> refreshAll() async {
+    if (_api == null) {
+      debugPrint('Error: API not initialized during refreshAll');
+      return;
+    }
+    
+    isLoadingNotifier.value = true;
+    
+    try {
+      final history = await _api!.getHistory();
+      _historyNotifier.value = history;
+    } catch (e) {
+      debugPrint('Error fetching history: $e');
+    }
+    
+    try {
+      final favorites = await _api!.getFavorites();
+      _favoritesNotifier.value = favorites;
+    } catch (e) {
+      debugPrint('Error fetching favorites: $e');
+    }
+    
+    try {
+      final playlists = await _api!.getPlaylists();
+      final Map<String, List<YtifyResult>> playlistMap = {};
+      for (var p in playlists) {
+        final name = p['playlist_name'];
+        try {
+          final songs = await _api!.getPlaylistSongs(name);
+          playlistMap[name] = songs;
+        } catch (e) {
+          debugPrint('Error fetching songs for playlist $name: $e');
+          playlistMap[name] = [];
+        }
+      }
+      _playlistsNotifier.value = playlistMap;
+    } catch (e) {
+      debugPrint('Error fetching playlists: $e');
+    }
 
-  ValueListenable<Box> get historyListenable => _historyBox.listenable();
-  ValueListenable<Box> get playlistsListenable => _playlistsBox.listenable();
+    try {
+      final subscriptions = await _api!.getSubscriptions();
+      _subscriptionsNotifier.value = subscriptions;
+    } catch (e) {
+      debugPrint('Error fetching subscriptions: $e');
+    } finally {
+      isLoadingNotifier.value = false;
+    }
+  }
+
+  // Listenables for UI
+  ValueListenable<List<YtifyResult>> get historyListenable => _historyNotifier;
+  ValueListenable<List<YtifyResult>> get favoritesListenable => _favoritesNotifier;
+  ValueListenable<List<YtifyResult>> get subscriptionsListenable => _subscriptionsNotifier;
+  // For playlists, the UI expects a Box listenable usually, but we'll adapt.
+  // We expose the map notifier.
+  ValueListenable<Map<String, List<YtifyResult>>> get playlistsListenable => _playlistsNotifier;
 
   // History
   Future<void> addToHistory(YtifyResult result) async {
-    // Avoid duplicates: remove if exists, then add to front
-    final history = getHistory();
-    history.removeWhere((item) => item.videoId == result.videoId);
-    history.insert(0, result);
-    
-    // Limit history size (e.g., 50)
-    if (history.length > 50) {
-      history.removeLast();
+    // Optimistic update
+    final current = List<YtifyResult>.from(_historyNotifier.value);
+    current.removeWhere((item) => item.videoId == result.videoId);
+    current.insert(0, result);
+    _historyNotifier.value = current;
+
+    if (_api == null) {
+      debugPrint('Error: API not initialized when adding to history');
+      return;
     }
 
-    final jsonList = history.map((item) => item.toJson()).toList();
-    await _historyBox.put('list', jsonList);
+    try {
+      await _api!.addToHistory(result);
+    } catch (e) {
+      debugPrint('Error adding to history API: $e');
+      // We don't set errorNotifier here to avoid spamming user on every song play
+    }
   }
 
   List<YtifyResult> getHistory() {
-    final dynamic data = _historyBox.get('list');
-    if (data == null) return [];
-    
-    try {
-      final List<dynamic> jsonList = data;
-      return jsonList.map((json) => YtifyResult.fromJson(Map<String, dynamic>.from(json))).toList();
-    } catch (e) {
-      print('Error parsing history: $e');
-      return [];
-    }
+    return _historyNotifier.value;
   }
 
   Future<void> removeFromHistory(String videoId) async {
-    final history = getHistory();
-    history.removeWhere((item) => item.videoId == videoId);
-    final jsonList = history.map((item) => item.toJson()).toList();
-    await _historyBox.put('list', jsonList);
+    if (_api == null) return;
+
+    isLoadingNotifier.value = true;
+    // Optimistic update
+    final current = List<YtifyResult>.from(_historyNotifier.value);
+    current.removeWhere((item) => item.videoId == videoId);
+    _historyNotifier.value = current;
+    
+    try {
+      await _api!.removeFromHistory(videoId);
+    } catch (e) {
+      errorNotifier.value = 'Failed to remove from history: $e';
+      // Revert optimistic update? 
+      // For history, maybe not strictly necessary to revert as it's less critical, 
+      // but strictly speaking we should. 
+      // However, fetching the item back is hard without knowing what it was exactly (we removed it).
+      // We could keep a reference to the removed item.
+    } finally {
+      isLoadingNotifier.value = false;
+    }
   }
 
   Future<void> clearHistory() async {
-    await _historyBox.delete('list');
-  }
-
-  Future<void> setHistory(List<YtifyResult> list) async {
-    final jsonList = list.map((item) => item.toJson()).toList();
-    await _historyBox.put('list', jsonList);
+    if (_api == null) return;
+    
+    isLoadingNotifier.value = true;
+    try {
+      await _api!.clearHistory();
+      _historyNotifier.value = [];
+    } catch (e) {
+      errorNotifier.value = 'Failed to clear history: $e';
+    } finally {
+      isLoadingNotifier.value = false;
+    }
   }
 
   // Playlists
-  // Structure: Map<String, List<YtifyResult>> where key is playlist name
-  
   List<String> getPlaylistNames() {
-    return _playlistsBox.keys.cast<String>().toList();
+    return _playlistsNotifier.value.keys.toList();
   }
 
   Future<void> createPlaylist(String name) async {
-    if (!_playlistsBox.containsKey(name)) {
-      await _playlistsBox.put(name, []);
+    // Optimistic
+    final current = Map<String, List<YtifyResult>>.from(_playlistsNotifier.value);
+    if (!current.containsKey(name)) {
+      current[name] = [];
+      _playlistsNotifier.value = current;
+      
+      // API: Add a song to create? Or just create? 
+      // The API docs say "3. Add Song to Playlist ... If the playlist doesn't exist, it will be created automatically".
+      // There is no "Create empty playlist" endpoint explicitly.
+      // So we can't really create an empty playlist on the backend until we add a song.
+      // We'll keep it local until a song is added.
     }
   }
 
   Future<void> deletePlaylist(String name) async {
-    await _playlistsBox.delete(name);
-  }
-
-  List<YtifyResult> getPlaylistSongs(String name) {
-    final dynamic data = _playlistsBox.get(name);
-    if (data == null) return [];
-
+    if (_api == null) return;
+    
+    isLoadingNotifier.value = true;
     try {
-      final List<dynamic> jsonList = data;
-      return jsonList.map((json) => YtifyResult.fromJson(Map<String, dynamic>.from(json))).toList();
+      await _api!.deletePlaylist(name);
+      final current = Map<String, List<YtifyResult>>.from(_playlistsNotifier.value);
+      current.remove(name);
+      _playlistsNotifier.value = current;
     } catch (e) {
-      return [];
+      errorNotifier.value = 'Failed to delete playlist: $e';
+    } finally {
+      isLoadingNotifier.value = false;
     }
   }
 
+  List<YtifyResult> getPlaylistSongs(String name) {
+    return _playlistsNotifier.value[name] ?? [];
+  }
+
   Future<void> addToPlaylist(String name, YtifyResult result) async {
-    final songs = getPlaylistSongs(name);
-    // Check for duplicates
+    final current = Map<String, List<YtifyResult>>.from(_playlistsNotifier.value);
+    final songs = List<YtifyResult>.from(current[name] ?? []);
+    
     if (!songs.any((s) => s.videoId == result.videoId)) {
-      songs.add(result);
-      final jsonList = songs.map((item) => item.toJson()).toList();
-      await _playlistsBox.put(name, jsonList);
+      if (_api == null) return;
+      
+      isLoadingNotifier.value = true;
+      try {
+        await _api!.addToPlaylist(name, result);
+        songs.add(result);
+        current[name] = songs;
+        _playlistsNotifier.value = current;
+      } catch (e) {
+        errorNotifier.value = 'Failed to add to playlist: $e';
+      } finally {
+        isLoadingNotifier.value = false;
+      }
     }
   }
 
   Future<void> removeFromPlaylist(String name, String videoId) async {
-    final songs = getPlaylistSongs(name);
-    songs.removeWhere((s) => s.videoId == videoId);
-    final jsonList = songs.map((item) => item.toJson()).toList();
-    await _playlistsBox.put(name, jsonList);
-  }
-
-  Future<void> setPlaylists(Map<String, List<YtifyResult>> playlists) async {
-    await _playlistsBox.clear();
-    for (final entry in playlists.entries) {
-      final jsonList = entry.value.map((item) => item.toJson()).toList();
-      await _playlistsBox.put(entry.key, jsonList);
-    }
-  }
-
-  Map<String, List<YtifyResult>> getAllPlaylists() {
-    final Map<String, List<YtifyResult>> playlists = {};
-    for (final key in _playlistsBox.keys) {
-      playlists[key.toString()] = getPlaylistSongs(key.toString());
-    }
-    return playlists;
-  }
-
-  // Favorites
-  static const String _favoritesBoxName = 'favorites';
-  Box get _favoritesBox => Hive.box(_favoritesBoxName);
-  ValueListenable<Box> get favoritesListenable => _favoritesBox.listenable();
-
-  Future<void> _initFavorites() async {
-    await Hive.openBox(_favoritesBoxName);
-  }
-
-  List<YtifyResult> getFavorites() {
-    final dynamic data = _favoritesBox.get('list');
-    if (data == null) return [];
+    final current = Map<String, List<YtifyResult>>.from(_playlistsNotifier.value);
+    final songs = List<YtifyResult>.from(current[name] ?? []);
     
+    // Optimistic
+    songs.removeWhere((s) => s.videoId == videoId);
+    current[name] = songs;
+    _playlistsNotifier.value = current;
+    
+    if (_api == null) return;
+
+    isLoadingNotifier.value = true;
     try {
-      final List<dynamic> jsonList = data;
-      return jsonList.map((json) => YtifyResult.fromJson(Map<String, dynamic>.from(json))).toList();
+      await _api!.removeSongFromPlaylist(name, videoId);
     } catch (e) {
-      return [];
+      errorNotifier.value = 'Failed to remove from playlist: $e';
+    } finally {
+      isLoadingNotifier.value = false;
     }
+  }
+  
+  // Favorites
+  List<YtifyResult> getFavorites() {
+    return _favoritesNotifier.value;
   }
 
   bool isFavorite(String videoId) {
-    final favorites = getFavorites();
-    return favorites.any((s) => s.videoId == videoId);
+    return _favoritesNotifier.value.any((s) => s.videoId == videoId);
   }
 
   Future<void> toggleFavorite(YtifyResult result) async {
-    final favorites = getFavorites();
-    final index = favorites.indexWhere((s) => s.videoId == result.videoId);
+    if (_api == null) return;
     
-    if (index != -1) {
-      favorites.removeAt(index);
-    } else {
-      favorites.insert(0, result);
+    isLoadingNotifier.value = true;
+    final current = List<YtifyResult>.from(_favoritesNotifier.value);
+    final index = current.indexWhere((s) => s.videoId == result.videoId);
+    
+    try {
+      if (index != -1) {
+        // Remove
+        await _api!.removeFromFavorites(result.videoId!);
+        current.removeAt(index);
+        _favoritesNotifier.value = current;
+      } else {
+        // Add
+        await _api!.addToFavorites(result);
+        current.insert(0, result);
+        _favoritesNotifier.value = current;
+      }
+    } catch (e) {
+      errorNotifier.value = 'Failed to update favorites: $e';
+    } finally {
+      isLoadingNotifier.value = false;
     }
-    
-    final jsonList = favorites.map((item) => item.toJson()).toList();
-    await _favoritesBox.put('list', jsonList);
   }
 
-  Future<void> setFavorites(List<YtifyResult> list) async {
-    final jsonList = list.map((item) => item.toJson()).toList();
-    await _favoritesBox.put('list', jsonList);
-  }
-
-  // Downloads
-  static const String _downloadsBoxName = 'downloads';
+  // Downloads (Local only)
   Box get _downloadsBox => Hive.box(_downloadsBoxName);
   ValueListenable<Box> get downloadsListenable => _downloadsBox.listenable();
-
-  Future<void> _initDownloads() async {
-    await Hive.openBox(_downloadsBoxName);
-  }
 
   List<Map<String, dynamic>> getDownloads() {
     final dynamic data = _downloadsBox.get('list');
@@ -235,51 +323,41 @@ class StorageService {
   }
 
   // Subscriptions
-  static const String _subscriptionsBoxName = 'subscriptions';
-  Box get _subscriptionsBox => Hive.box(_subscriptionsBoxName);
-  ValueListenable<Box> get subscriptionsListenable => _subscriptionsBox.listenable();
-
-  Future<void> _initSubscriptions() async {
-    await Hive.openBox(_subscriptionsBoxName);
-  }
-
   List<YtifyResult> getSubscriptions() {
-    final dynamic data = _subscriptionsBox.get('list');
-    if (data == null) return [];
-    
-    try {
-      final List<dynamic> jsonList = data;
-      return jsonList.map((json) => YtifyResult.fromJson(Map<String, dynamic>.from(json))).toList();
-    } catch (e) {
-      return [];
-    }
+    return _subscriptionsNotifier.value;
   }
 
   bool isSubscribed(String channelId) {
-    final subscriptions = getSubscriptions();
-    return subscriptions.any((s) => s.browseId == channelId);
+    return _subscriptionsNotifier.value.any((s) => s.browseId == channelId);
   }
 
   Future<void> toggleSubscription(YtifyResult channel) async {
-    final subscriptions = getSubscriptions();
-    final index = subscriptions.indexWhere((s) => s.browseId == channel.browseId);
+    if (_api == null) return;
     
-    if (index != -1) {
-      subscriptions.removeAt(index);
-    } else {
-      subscriptions.insert(0, channel);
+    isLoadingNotifier.value = true;
+    final current = List<YtifyResult>.from(_subscriptionsNotifier.value);
+    final index = current.indexWhere((s) => s.browseId == channel.browseId);
+    
+    try {
+      if (index != -1) {
+        // Unsubscribe
+        await _api!.removeSubscription(channel.browseId!);
+        current.removeAt(index);
+        _subscriptionsNotifier.value = current;
+      } else {
+        // Subscribe
+        await _api!.addSubscription(channel);
+        current.insert(0, channel);
+        _subscriptionsNotifier.value = current;
+      }
+    } catch (e) {
+      errorNotifier.value = 'Failed to update subscription: $e';
+    } finally {
+      isLoadingNotifier.value = false;
     }
-    
-    final jsonList = subscriptions.map((item) => item.toJson()).toList();
-    await _subscriptionsBox.put('list', jsonList);
   }
 
-  Future<void> setSubscriptions(List<YtifyResult> list) async {
-    final jsonList = list.map((item) => item.toJson()).toList();
-    await _subscriptionsBox.put('list', jsonList);
-  }
-
-  // Artist Images
+  // Artist Images (Local Cache)
   Box get _artistImagesBox => Hive.box(_artistImagesBoxName);
   ValueListenable<Box> get artistImagesListenable => _artistImagesBox.listenable();
 
@@ -295,16 +373,11 @@ class StorageService {
 
   Future<void> fetchAndCacheArtistImage(String artistId) async {
     if (_fetchingArtists.contains(artistId)) return;
-    if (getArtistImage(artistId) != null) return; // Already cached
+    if (getArtistImage(artistId) != null) return;
 
     _fetchingArtists.add(artistId);
 
     try {
-      // We need YtifyApiService here. Since StorageService is a provider, 
-      // we can't easily inject it unless we pass it or use a locator.
-      // But YtifyApiService is a simple class, so we can instantiate it.
-      // Ideally, we should use ref.read(ytifyApiServiceProvider) if it existed.
-      // For now, simple instantiation is fine as per previous pattern.
       final apiService = YtifyApiService(); 
       final details = await apiService.getArtistDetails(artistId);
       if (details != null && details.artistAvatar.isNotEmpty) {
@@ -314,9 +387,6 @@ class StorageService {
       }
     } catch (e) {
       debugPrint('Error fetching artist image for $artistId: $e');
-      // Optionally mark as invalid on error to stop retrying?
-      // For now, let's keep retrying on error (e.g. network issue)
-      // But if it's a 404, the API service might return null, so handled above.
     } finally {
       _fetchingArtists.remove(artistId);
     }
@@ -325,8 +395,6 @@ class StorageService {
   // Settings
   Box get _settingsBox => Hive.box(_settingsBoxName);
   ValueListenable<Box> get settingsListenable => _settingsBox.listenable();
-
-
 
   String? get rapidApiKey => _settingsBox.get('rapidApiKey');
 
@@ -341,28 +409,32 @@ class StorageService {
   String get rapidApiCountryCode => _settingsBox.get('rapidApiCountryCode', defaultValue: 'IN');
   Future<void> setRapidApiCountryCode(String code) => _settingsBox.put('rapidApiCountryCode', code);
 
-  String? get postgresUri => _settingsBox.get('postgresUri');
-  Future<void> setPostgresUri(String? value) async {
-    if (value == null || value.isEmpty) {
-      await _settingsBox.delete('postgresUri');
-    } else {
-      await _settingsBox.put('postgresUri', value);
-    }
-  }
-
   // User Info
   String? get username => _settingsBox.get('username');
   String? get email => _settingsBox.get('email');
+  String? get authToken => _settingsBox.get('authToken');
 
   Future<void> setUserInfo(String username, String email) async {
     await _settingsBox.put('username', username);
     await _settingsBox.put('email', email);
   }
 
+  Future<void> setAuthToken(String token) async {
+    await _settingsBox.put('authToken', token);
+    // Refresh data when token is set (login)
+    await refreshAll();
+  }
+
   Future<void> clearUserSession() async {
     await _settingsBox.delete('username');
     await _settingsBox.delete('email');
-    await _settingsBox.delete('postgresUri');
+    await _settingsBox.delete('authToken');
+    // Clear in-memory state
+    _historyNotifier.value = [];
+    _favoritesNotifier.value = [];
+    _subscriptionsNotifier.value = [];
+    _playlistsNotifier.value = {};
   }
 }
+
 

@@ -17,11 +17,12 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
 
   static final _darkTheme = ThemeData(
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: Colors.transparent,
+    scaffoldBackgroundColor: const Color(0xFF121212), // Deep dark background
     colorScheme: const ColorScheme.dark(
-      primary: Color(0xFFFF0000), // YouTube Red
+      primary: Color(0xFFE50914), // Vibrant Red
       secondary: Color(0xFFFFFFFF),
       surface: Color(0xFF1E1E1E),
+      background: Color(0xFF121212),
     ),
     // Use Outfit (Google Sans alternative)
     textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
@@ -34,13 +35,21 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
       },
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: const Color(0xFF121212).withValues(alpha: 0.8),
       elevation: 0,
       centerTitle: true,
+      scrolledUnderElevation: 0,
       titleTextStyle: GoogleFonts.outfit(
         color: Colors.white,
-        fontSize: 17, // iOS standard title size
+        fontSize: 18,
         fontWeight: FontWeight.w600,
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: const Color(0xFF1E1E1E).withValues(alpha: 0.8),
+      indicatorColor: const Color(0xFFE50914).withValues(alpha: 0.2),
+      labelTextStyle: WidgetStateProperty.all(
+        GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500),
       ),
     ),
   );
@@ -62,17 +71,19 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
         maximumColorCount: 20,
       );
 
-      final dominantColor = paletteGenerator.dominantColor?.color ?? const Color(0xFFFF0000);
+      final dominantColor = paletteGenerator.dominantColor?.color ?? const Color(0xFFE50914);
       final vibrantColor = paletteGenerator.vibrantColor?.color ?? dominantColor;
       final mutedColor = paletteGenerator.mutedColor?.color ?? const Color(0xFF1E1E1E);
+      final darkMutedColor = paletteGenerator.darkMutedColor?.color ?? const Color(0xFF121212);
 
       state = ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.transparent,
+        scaffoldBackgroundColor: darkMutedColor.withValues(alpha: 0.3), // Tinted background
         colorScheme: ColorScheme.dark(
           primary: vibrantColor,
           secondary: dominantColor,
-          surface: mutedColor.withValues(alpha: 0.5), // Slightly transparent surface
+          surface: mutedColor.withValues(alpha: 0.5),
+          background: darkMutedColor,
           onPrimary: _getTextColorForBackground(vibrantColor),
           onSurface: Colors.white,
         ),
@@ -86,12 +97,13 @@ class ThemeNotifier extends StateNotifier<ThemeData> {
           },
         ),
         appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFF0F0F0F),
+          backgroundColor: darkMutedColor.withValues(alpha: 0.8),
           elevation: 0,
           centerTitle: true,
+          scrolledUnderElevation: 0,
           titleTextStyle: GoogleFonts.outfit(
             color: Colors.white,
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),

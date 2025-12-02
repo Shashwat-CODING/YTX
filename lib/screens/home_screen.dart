@@ -15,6 +15,8 @@ import 'package:ytx/screens/artist_screen.dart';
 import 'package:ytx/services/ytify_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ytx/screens/settings_screen.dart';
+import 'package:ytx/widgets/glass_container.dart';
+import 'package:ytx/widgets/offline_indicator.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -45,56 +47,65 @@ class HomeScreen extends ConsumerWidget {
     
     return SafeArea(
       bottom: false,
-      child: CustomScrollView(
-        slivers: [
-          // Greeting Section
-          SliverToBoxAdapter(
-            child: _buildGreeting(context, ref),
-          ),
+      child: RefreshIndicator(
+        color: Colors.white,
+        backgroundColor: const Color(0xFF1E1E1E),
+        onRefresh: () async {
+          await storage.refreshAll();
+        },
+        child: CustomScrollView(
+          slivers: [
+            // Greeting Section
+            SliverToBoxAdapter(
+              child: _buildGreeting(context, ref),
+            ),
 
-          // Speed Dial Section
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      const Icon(Icons.history, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Speed dial',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                      ),
-                      const Spacer(),
-                      // const Icon(Icons.chevron_right, color: Colors.white),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
+            // Speed Dial Section
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const OfflineIndicator(),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Icon(Icons.history, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Speed dial',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                        const Spacer(),
+                        // const Icon(Icons.chevron_right, color: Colors.white),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
-          ),
-          
-          _buildSpeedDial(context, ref),
+            
+            _buildSpeedDial(context, ref),
 
-          // Favorites Section
-          SliverToBoxAdapter(
-            child: _buildFavoritesSection(context, ref),
-          ),
+            // Favorites Section
+            SliverToBoxAdapter(
+              child: _buildFavoritesSection(context, ref),
+            ),
 
-          // Artists Section
-          SliverToBoxAdapter(
-            child: _buildArtistsSection(context, ref),
-          ),
-          
-          const SliverPadding(padding: EdgeInsets.only(bottom: 200)),
-        ],
+            // Artists Section
+            SliverToBoxAdapter(
+              child: _buildArtistsSection(context, ref),
+            ),
+            
+            const SliverPadding(padding: EdgeInsets.only(bottom: 200)),
+          ],
+        ),
       ),
     );
   }
@@ -222,13 +233,14 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildSpeedDial(BuildContext context, WidgetRef ref) {
     final storage = ref.watch(storageServiceProvider);
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<List<YtifyResult>>(
       valueListenable: storage.historyListenable,
-      builder: (context, box, _) {
-        final history = storage.getHistory();
-        // Filter for songs only and take top 8
+      builder: (context, history, _) {
+        // Filter for songs only, remove duplicates, and take top 8
+        final uniqueHistory = <String>{};
         final speedDialItems = history
             .where((item) => item.resultType != 'video')
+            .where((item) => uniqueHistory.add(item.videoId!))
             .take(8)
             .toList();
 
@@ -294,8 +306,15 @@ class HomeScreen extends ConsumerWidget {
          Expanded(
            child: Container(
              decoration: BoxDecoration(
-               borderRadius: BorderRadius.circular(8),
+               borderRadius: BorderRadius.circular(12),
                color: Colors.grey[900],
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withOpacity(0.3),
+                   blurRadius: 8,
+                   offset: const Offset(0, 4),
+                 ),
+               ],
                image: imageUrl.isNotEmpty
                    ? DecorationImage(
                        image: CachedNetworkImageProvider(imageUrl),
@@ -308,13 +327,13 @@ class HomeScreen extends ConsumerWidget {
                  Positioned.fill(
                    child: Container(
                      decoration: BoxDecoration(
-                       borderRadius: BorderRadius.circular(8),
+                       borderRadius: BorderRadius.circular(12),
                        gradient: LinearGradient(
                          begin: Alignment.topCenter,
                          end: Alignment.bottomCenter,
                          colors: [
                            Colors.transparent,
-                           Colors.black.withOpacity(0.7),
+                           Colors.black.withOpacity(0.8),
                          ],
                          stops: const [0.6, 1.0],
                        ),
@@ -333,6 +352,13 @@ class HomeScreen extends ConsumerWidget {
                        color: Colors.white,
                        fontWeight: FontWeight.bold,
                        fontSize: 12,
+                       shadows: [
+                         Shadow(
+                           color: Colors.black,
+                           blurRadius: 4,
+                           offset: Offset(0, 2),
+                         ),
+                       ],
                      ),
                      textAlign: TextAlign.left,
                    ),
@@ -347,23 +373,22 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildFavoritesSection(BuildContext context, WidgetRef ref) {
     final storage = ref.watch(storageServiceProvider);
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<List<YtifyResult>>(
       valueListenable: storage.favoritesListenable,
-      builder: (context, box, _) {
-        final favorites = storage.getFavorites();
+      builder: (context, favorites, _) {
         if (favorites.isEmpty) return const SizedBox.shrink();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Text(
                 'Favorites',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
@@ -470,14 +495,14 @@ class HomeScreen extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Text(
                 'Artists',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),

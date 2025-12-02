@@ -43,9 +43,9 @@ class _SubscribedChannelsScreenState extends ConsumerState<SubscribedChannelsScr
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: ValueListenableBuilder<Box>(
+        child: ValueListenableBuilder<List<YtifyResult>>(
           valueListenable: storage.subscriptionsListenable,
-          builder: (context, box, _) {
+          builder: (context, subscriptions, _) {
             final subscriptions = storage.getSubscriptions();
 
             if (subscriptions.isEmpty) {

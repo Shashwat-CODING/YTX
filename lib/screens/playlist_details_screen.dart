@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ytx/models/ytify_result.dart';
 
 import 'package:ytx/providers/player_provider.dart';
 import 'package:ytx/services/storage_service.dart';
@@ -50,9 +51,9 @@ class PlaylistDetailsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ValueListenableBuilder(
+      body: ValueListenableBuilder<Map<String, List<YtifyResult>>>(
         valueListenable: storage.playlistsListenable,
-        builder: (context, box, _) {
+        builder: (context, playlistsMap, _) {
           final songs = storage.getPlaylistSongs(playlistName);
           
           if (songs.isEmpty) {

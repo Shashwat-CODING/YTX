@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ytx/providers/settings_provider.dart';
 import 'package:ytx/services/storage_service.dart';
-import 'package:ytx/services/cloud_sync_service.dart';
+
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ytx/widgets/global_background.dart';
 import 'package:ytx/screens/about_screen.dart';
@@ -85,8 +85,7 @@ class SettingsScreen extends ConsumerWidget {
                   return ValueListenableBuilder(
                     valueListenable: storage.settingsListenable,
                     builder: (context, box, _) {
-                      final postgresUri = storage.postgresUri;
-                      return _buildSection('Cloud Sync', [
+                      return _buildSection('Account', [
                         // Show User Info if logged in
                         if (storage.username != null) ...[
                           ListTile(
@@ -107,26 +106,6 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           ),
                         ] else ...[
-                          // Show manual config if not logged in
-                          ListTile(
-                            leading: const Icon(Icons.storage, color: Colors.white),
-                            title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
-                            subtitle: Text(
-                              storage.postgresUri != null && storage.postgresUri!.isNotEmpty ? 'Configured' : 'Not Configured',
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                            onTap: () {
-                              _showTextInputDialog(
-                                context: context,
-                                title: 'PostgreSQL URI',
-                                initialValue: storage.postgresUri,
-                                onSubmitted: (value) {
-                                  storage.setPostgresUri(value);
-                                },
-                              );
-                            },
-                          ),
-                          const Divider(height: 1, color: Colors.white10),
                           ListTile(
                             leading: const Icon(Icons.login, color: Colors.white),
                             title: const Text('Login / Signup', style: TextStyle(color: Colors.white)),
@@ -134,27 +113,6 @@ class SettingsScreen extends ConsumerWidget {
                               Navigator.of(context).push(
                                 MaterialPageRoute(builder: (_) => const AuthScreen()),
                               );
-                            },
-                          ),
-                        ],
-                        if (postgresUri != null && postgresUri.isNotEmpty) ...[
-                          const Divider(height: 1, color: Colors.white10),
-                          ListTile(
-                            title: const Text('Sync Now', style: TextStyle(color: Colors.white)),
-                            subtitle: Text('Sync data with cloud', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                            trailing: const Icon(Icons.sync, color: Colors.white),
-                            onTap: () async {
-                              try {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syncing...')));
-                                await ref.read(cloudSyncServiceProvider).syncData();
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync successful!')));
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
-                                }
-                              }
                             },
                           ),
                         ],
@@ -213,54 +171,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showPostgresUriDialog(BuildContext context, StorageService storage) {
-    final controller = TextEditingController(text: storage.postgresUri);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('PostgreSQL URI', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your PostgreSQL connection URI to sync your data across devices.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Format: postgres://user:password@host:port/database',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'postgres://...',
-                hintStyle: TextStyle(color: Colors.grey),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              storage.setPostgresUri(controller.text.trim());
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showApiKeyDialog(BuildContext context, StorageService storage) {
     final controller = TextEditingController(text: storage.rapidApiKey);

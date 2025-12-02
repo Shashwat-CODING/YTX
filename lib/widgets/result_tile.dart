@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -85,33 +86,46 @@ class ResultTile extends ConsumerWidget {
               Builder(
                 builder: (context) {
                   final isVideo = result.resultType == 'video';
-                  final width = isVideo ? 96.0 : 54.0;
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            height: 54,
-                            width: width,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              height: 54,
+                  final width = isVideo ? 100.0 : 56.0;
+                  final height = 56.0;
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              height: height,
                               width: width,
-                              color: Colors.grey[800],
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              height: 54,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                height: height,
+                                width: width,
+                                color: Colors.grey[900],
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                height: height,
+                                width: width,
+                                color: Colors.grey[900],
+                                child: const Icon(Icons.error, size: 20),
+                              ),
+                            )
+                          : Container(
+                              height: height,
                               width: width,
                               color: Colors.grey[900],
-                              child: const Icon(Icons.error), // Keep Material Icon for error fallback or use FaIcon
+                              child: const Icon(Icons.music_note),
                             ),
-                          )
-                        : Container(
-                            height: 54,
-                            width: width,
-                            color: Colors.grey[900],
-                            child: const Icon(Icons.music_note), // Keep Material Icon for fallback
-                          ),
+                    ),
                   );
                 }
               ),
@@ -127,11 +141,12 @@ class ResultTile extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       () {
                         String subtitle = '';
@@ -155,7 +170,11 @@ class ResultTile extends ConsumerWidget {
                         
                         return subtitle;
                       }(),
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.grey[400], 
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -167,128 +186,177 @@ class ResultTile extends ConsumerWidget {
               Consumer(
                 builder: (context, ref, _) {
                   final storage = ref.watch(storageServiceProvider);
-                  return ValueListenableBuilder(
+                  return ValueListenableBuilder<List<YtifyResult>>(
                     valueListenable: storage.favoritesListenable,
-                    builder: (context, box, _) {
+                    builder: (context, favorites, _) {
                       if (result.videoId == null) return const SizedBox.shrink();
                       final isFav = storage.isFavorite(result.videoId!);
-                      return PopupMenuButton<String>(
-                        icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, color: Colors.white),
-                        color: const Color(0xFF1E1E1E),
-                        onSelected: (value) async {
-                          if (value == 'queue') {
-                            ref.read(audioHandlerProvider).addToQueue(result);
-                            showGlassSnackBar(context, 'Added to queue');
-                          } else if (value == 'play_next') {
-                            ref.read(audioHandlerProvider).playNext(result);
-                          } else if (value == 'playlist') {
-                            showCupertinoDialog(
-                              context: context,
-                              barrierDismissible: true,
-                              builder: (context) => PlaylistSelectionDialog(song: result),
-                            );
-                          } else if (value == 'favorite') {
-                            storage.toggleFavorite(result);
-                            showGlassSnackBar(context, isFav ? 'Removed from favorites' : 'Added to favorites');
-                          } else if (value == 'download') {
-                            final downloadService = DownloadService();
-                            if (storage.isDownloaded(result.videoId!)) {
-                              await downloadService.deleteDownload(result.videoId!);
-                              if (context.mounted) showGlassSnackBar(context, 'Removed from downloads');
-                            } else {
-                              // Show downloading alert
-                              bool isDialogVisible = true;
-                              showAppAlertDialog(
-                                context: context,
-                                title: 'Downloading',
-                                content: const Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('Please wait while the song is being downloaded...'),
-                                    SizedBox(height: 16),
-                                    CupertinoActivityIndicator(),
-                                  ],
-                                ),
-                                actions: [
-                                  CupertinoDialogAction(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Hide'),
+                      final isDownloaded = storage.isDownloaded(result.videoId!);
+                      
+                      return IconButton(
+                        icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, color: Colors.white, size: 20),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            builder: (context) => Container(
+                              margin: const EdgeInsets.all(16),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.8),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          width: 40,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                                          child: Text(
+                                            result.title,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                                          child: Text(
+                                            result.artists?.map((a) => a.name).join(', ') ?? '',
+                                            style: TextStyle(
+                                              color: Colors.grey[400],
+                                              fontSize: 14,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        _buildMenuOption(
+                                          context,
+                                          icon: FontAwesomeIcons.list,
+                                          label: 'Add to queue',
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            ref.read(audioHandlerProvider).addToQueue(result);
+                                            showGlassSnackBar(context, 'Added to queue');
+                                          },
+                                        ),
+                                        _buildMenuOption(
+                                          context,
+                                          icon: FontAwesomeIcons.circlePlay,
+                                          label: 'Play next',
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            ref.read(audioHandlerProvider).playNext(result);
+                                          },
+                                        ),
+                                        _buildMenuOption(
+                                          context,
+                                          icon: FontAwesomeIcons.plus,
+                                          label: 'Add to playlist',
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            showCupertinoDialog(
+                                              context: context,
+                                              barrierDismissible: true,
+                                              builder: (context) => PlaylistSelectionDialog(song: result),
+                                            );
+                                          },
+                                        ),
+                                        _buildMenuOption(
+                                          context,
+                                          icon: isFav ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart,
+                                          label: isFav ? 'Remove from favorites' : 'Add to favorites',
+                                          iconColor: isFav ? Colors.red : Colors.white,
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            storage.toggleFavorite(result);
+                                            showGlassSnackBar(context, isFav ? 'Removed from favorites' : 'Added to favorites');
+                                          },
+                                        ),
+                                        _buildMenuOption(
+                                          context,
+                                          icon: isDownloaded ? FontAwesomeIcons.check : FontAwesomeIcons.download,
+                                          label: isDownloaded ? 'Remove download' : 'Download',
+                                          onTap: () async {
+                                            Navigator.pop(context);
+                                            final downloadService = DownloadService();
+                                            if (storage.isDownloaded(result.videoId!)) {
+                                              await downloadService.deleteDownload(result.videoId!);
+                                              if (context.mounted) showGlassSnackBar(context, 'Removed from downloads');
+                                            } else {
+                                              // Show downloading alert
+                                              bool isDialogVisible = true;
+                                              showAppAlertDialog(
+                                                context: context,
+                                                title: 'Downloading',
+                                                content: const Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text('Please wait while the song is being downloaded...'),
+                                                    SizedBox(height: 16),
+                                                    CupertinoActivityIndicator(),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  CupertinoDialogAction(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    child: const Text('Hide'),
+                                                  ),
+                                                ],
+                                              ).then((_) => isDialogVisible = false);
+                                              
+                                              // Use provider to start download and track progress
+                                              final success = await ref.read(downloadProvider.notifier).startDownload(result);
+                                              
+                                              // Close the downloading alert if it's still visible
+                                              if (context.mounted) {
+                                                if (isDialogVisible) {
+                                                  Navigator.of(context, rootNavigator: true).pop();
+                                                }
+                                                
+                                                if (success) {
+                                                  showGlassSnackBar(context, 'Download complete');
+                                                } else {
+                                                  showGlassSnackBar(context, 'Download failed - Please try again');
+                                                }
+                                              }
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              ).then((_) => isDialogVisible = false);
-                              
-                              // Use provider to start download and track progress
-                              final success = await ref.read(downloadProvider.notifier).startDownload(result);
-                              
-                              // Close the downloading alert if it's still visible
-                              if (context.mounted) {
-                                if (isDialogVisible) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                                
-                                if (success) {
-                                  showGlassSnackBar(context, 'Download complete');
-                                } else {
-                                  showGlassSnackBar(context, 'Download failed - Please try again');
-                                }
-                              }
-                            }
-                          }
-                        },
-                        itemBuilder: (BuildContext context) {
-                          final isDownloaded = storage.isDownloaded(result.videoId!);
-                          return <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'queue',
-                            child: Row(
-                              children: [
-                                FaIcon(FontAwesomeIcons.list, color: Colors.white),
-                                SizedBox(width: 12),
-                                Text('Add to queue', style: TextStyle(color: Colors.white)),
-                              ],
+                                ),
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'play_next',
-                            child: Row(
-                              children: [
-                                FaIcon(FontAwesomeIcons.circlePlay, color: Colors.white),
-                                SizedBox(width: 12),
-                                Text('Play next', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'playlist',
-                            child: Row(
-                              children: [
-                                FaIcon(FontAwesomeIcons.plus, color: Colors.white),
-                                SizedBox(width: 12),
-                                Text('Add to playlist', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'favorite',
-                            child: Row(
-                              children: [
-                                FaIcon(isFav ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart, color: Colors.white),
-                                const SizedBox(width: 12),
-                                Text(isFav ? 'Remove from favorites' : 'Add to favorites', style: const TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'download',
-                            child: Row(
-                              children: [
-                                FaIcon(isDownloaded ? FontAwesomeIcons.check : FontAwesomeIcons.download, color: Colors.white),
-                                const SizedBox(width: 12),
-                                Text(isDownloaded ? 'Remove download' : 'Download', style: const TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        ];
+                          );
                         },
                       );
                     },
@@ -297,6 +365,35 @@ class ResultTile extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuOption(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color iconColor = Colors.white,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+        child: Row(
+          children: [
+            FaIcon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

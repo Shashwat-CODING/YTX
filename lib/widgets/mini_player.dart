@@ -44,7 +44,7 @@ class MiniPlayer extends ConsumerWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(32),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Increased blur
+                filter: ImageFilter.blur(sigmaX: 120, sigmaY: 120), // Increased blur
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF272727).withValues(alpha: 0.5), // Match Navbar opacity
@@ -102,9 +102,9 @@ class MiniPlayer extends ConsumerWidget {
                       Consumer(
                         builder: (context, ref, child) {
                           final storage = ref.watch(storageServiceProvider);
-                          return ValueListenableBuilder(
+                          return ValueListenableBuilder<List<YtifyResult>>(
                             valueListenable: storage.favoritesListenable,
-                            builder: (context, box, _) {
+                            builder: (context, favorites, _) {
                               final isFav = storage.isFavorite(mediaItem.id);
                               return IconButton(
                                 icon: Icon(

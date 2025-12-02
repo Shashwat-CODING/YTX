@@ -11,6 +11,9 @@ import 'package:ytx/widgets/mini_player.dart';
 import 'package:ytx/services/share_service.dart';
 import 'package:ytx/widgets/global_background.dart';
 import 'package:ytx/widgets/sync_progress_dialog.dart';
+import 'package:ytx/widgets/glass_container.dart';
+import 'package:ytx/services/storage_service.dart';
+import 'package:ytx/widgets/glass_snackbar.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -47,6 +50,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final isPlayerExpanded = ref.watch(isPlayerExpandedProvider);
 
     final audioHandler = ref.watch(audioHandlerProvider);
+    
+    _setupErrorListener(ref);
 
     return GlobalBackground(
       child: Scaffold(
@@ -61,25 +66,22 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: SafeArea(
-                child: IgnorePointer(
-                  ignoring: isPlayerExpanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: isPlayerExpanded ? 0.0 : 1.0,
-                    child: Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.9,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const MiniPlayer(),
-                            const SizedBox(height: 2),
-                            _buildFloatingNavBar(context, ref, selectedIndex),
-                            const SizedBox(height: 16),
-                          ],
+              child: IgnorePointer(
+                ignoring: isPlayerExpanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: isPlayerExpanded ? 0.0 : 1.0,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: const MiniPlayer(),
                         ),
-                      ),
+                        const SizedBox(height: 2),
+                        _buildFloatingNavBar(context, ref, selectedIndex),
+                      ],
                     ),
                   ),
                 ),
@@ -89,15 +91,21 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             // Loading Overlay
             ValueListenableBuilder<bool>(
               valueListenable: audioHandler.isLoadingStream,
-              builder: (context, isLoading, _) {
-                if (!isLoading) return const SizedBox.shrink();
-                return Container(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-                  ),
+              builder: (context, isAudioLoading, _) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: ref.watch(storageServiceProvider).isLoadingNotifier,
+                  builder: (context, isStorageLoading, _) {
+                    final isLoading = isAudioLoading || isStorageLoading;
+                    if (!isLoading) return const SizedBox.shrink();
+                    return Container(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -107,40 +115,50 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     );
   }
 
+  void _setupErrorListener(WidgetRef ref) {
+    ref.listen(storageServiceProvider, (previous, next) {
+      if (previous?.errorNotifier.value != next.errorNotifier.value && next.errorNotifier.value != null) {
+        showGlassSnackBar(context, next.errorNotifier.value!);
+        // Reset error after showing
+        next.errorNotifier.value = null;
+      }
+    });
+  }
+
   Widget _buildFloatingNavBar(BuildContext context, WidgetRef ref, int selectedIndex) {
-    return ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-          child: Container(
-            height: 60, // Slightly taller for better touch targets
-            decoration: BoxDecoration(
-              color: const Color(0xFF272727).withValues(alpha: 0.5), // More transparency
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavItem(context, ref, FontAwesomeIcons.house, 0, selectedIndex),
-                _buildNavItem(context, ref, FontAwesomeIcons.compactDisc, 2, selectedIndex),
-                _buildNavItem(context, ref, FontAwesomeIcons.userGroup, 3, selectedIndex), // Subscriptions
-                _buildNavItem(context, ref, FontAwesomeIcons.rotate, 5, selectedIndex), // Sync
-              ],
-            ),
-          ),
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return GlassContainer(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      color: const Color(0xFF1E1E1E),
+      opacity: 0.50, // Increased opacity for better visibility at bottom
+      blur: 120,
+      border: Border(
+        top: BorderSide(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
         ),
-      );
+      ),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavItem(context, ref, FontAwesomeIcons.house, 0, selectedIndex),
+            _buildNavItem(context, ref, FontAwesomeIcons.magnifyingGlass, 1, selectedIndex),
+            _buildNavItem(context, ref, FontAwesomeIcons.compactDisc, 2, selectedIndex),
+            _buildNavItem(context, ref, FontAwesomeIcons.userGroup, 3, selectedIndex),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildNavItem(BuildContext context, WidgetRef ref, IconData icon, int index, int selectedIndex) {
     final isSelected = selectedIndex == index;
     return GestureDetector(
       onTap: () {
-        if (index == 0 || index == 2 || index == 3) {
+        if (index == 0 || index == 1 || index == 2 || index == 3) {
           ref.read(navigationIndexProvider.notifier).state = index;
           navigatorKey.currentState?.popUntil((route) => route.isFirst);
         } else if (index == 5) {

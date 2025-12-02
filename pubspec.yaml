@@ -57,6 +57,7 @@ dependencies:
   marquee: ^2.3.0
   postgres: ^3.5.9
   flutter_svg: ^2.0.10
+  connectivity_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

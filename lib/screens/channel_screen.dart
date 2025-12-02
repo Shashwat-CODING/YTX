@@ -162,9 +162,9 @@ class _ChannelScreenState extends ConsumerState<ChannelScreen> {
                                     Consumer(
                                       builder: (context, ref, _) {
                                         final storage = ref.watch(storageServiceProvider);
-                                        return ValueListenableBuilder(
+                                        return ValueListenableBuilder<List<YtifyResult>>(
                                           valueListenable: storage.subscriptionsListenable,
-                                          builder: (context, box, _) {
+                                          builder: (context, subscriptions, _) {
                                             final isSubscribed = storage.isSubscribed(widget.channelId);
                                             return SizedBox(
                                               height: 36,

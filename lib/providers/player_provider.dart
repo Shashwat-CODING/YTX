@@ -3,8 +3,11 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:ytx/services/audio_handler.dart';
 
+import 'package:ytx/services/storage_service.dart';
+
 final audioHandlerProvider = Provider<AudioHandler>((ref) {
-  return AudioHandler();
+  final storage = ref.watch(storageServiceProvider);
+  return AudioHandler(storage);
 });
 
 final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {

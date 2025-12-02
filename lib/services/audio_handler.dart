@@ -11,7 +11,7 @@ import 'package:ytx/widgets/glass_snackbar.dart';
 class AudioHandler {
   final AudioPlayer _player = AudioPlayer();
   final YouTubeApiService _apiService = YouTubeApiService();
-  final StorageService _storage = StorageService();
+  final StorageService _storage;
   
   // Playlist for queue management
   final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
@@ -24,7 +24,7 @@ class AudioHandler {
   AudioPlayer get player => _player;
   ConcatenatingAudioSource get playlist => _playlist;
 
-  AudioHandler() {
+  AudioHandler(this._storage) {
     _init();
   }
 

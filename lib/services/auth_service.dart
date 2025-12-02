@@ -9,16 +9,14 @@ final authServiceProvider = Provider<AuthService>((ref) {
 
 class AuthService {
   final StorageService _storage;
-  static const String _baseUrl = 'https://shashwatidr-ytxauth.hf.space';
+  static const String _baseUrl = 'https://shashwatidr-ytxauth.hf.space/api/auth';
 
   AuthService(this._storage);
 
-  Future<void> signup({
-    required String username,
-    required String email,
-    required String password,
-    required String psqlUri,
-  }) async {
+  String? get token => _storage.authToken;
+  bool get isAuthenticated => token != null;
+
+  Future<void> signup(String username, String email, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/signup'),
       headers: {'Content-Type': 'application/json'},
@@ -26,23 +24,23 @@ class AuthService {
         'username': username,
         'email': email,
         'password': password,
-        'psql_uri': psqlUri,
       }),
     );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
+      final token = data['token'];
       final user = data['user'];
-      await _saveUserSession(user);
+      
+      await _storage.setAuthToken(token);
+      await _storage.setUserInfo(user['username'], user['email']);
     } else {
-      throw Exception('Signup failed: ${response.body}');
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Signup failed');
     }
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
@@ -54,21 +52,18 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      final token = data['token'];
       final user = data['user'];
-      await _saveUserSession(user);
+      
+      await _storage.setAuthToken(token);
+      await _storage.setUserInfo(user['username'], user['email']);
     } else {
-      throw Exception('Login failed: ${response.body}');
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Login failed');
     }
   }
 
   Future<void> logout() async {
     await _storage.clearUserSession();
   }
-
-  Future<void> _saveUserSession(Map<String, dynamic> user) async {
-    await _storage.setPostgresUri(user['psql_uri']);
-    await _storage.setUserInfo(user['username'], user['email']);
-  }
-  
-  bool get isLoggedIn => _storage.username != null;
 }

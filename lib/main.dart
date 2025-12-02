@@ -9,19 +9,13 @@ import 'package:ytx/screens/auth_screen.dart';
 import 'package:ytx/services/storage_service.dart';
 import 'package:ytx/services/navigator_key.dart';
 import 'package:ytx/services/notification_service.dart';
-import 'package:ytx/services/cloud_sync_service.dart';
+
 import 'package:ytx/widgets/main_layout.dart';
 import 'package:ytx/providers/theme_provider.dart';
 import 'package:ytx/services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter(); // Initialize Hive for settings
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
-    androidNotificationChannelName: 'Audio playback',
-    androidNotificationOngoing: true,
-  );
   
   // Set system UI overlay style for transparent nav bar
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -35,9 +29,17 @@ Future<void> main() async {
   // Enable edge-to-edge
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  await StorageService().init();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+
+  final container = ProviderContainer();
+  await container.read(storageServiceProvider).init();
   await NotificationService().init();
-  runApp(const ProviderScope(child: MyApp()));
+
+  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
@@ -45,9 +47,6 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Initialize background sync
-    ref.read(cloudSyncServiceProvider).initBackgroundSync();
-
     final theme = ref.watch(themeProvider);
     
     return MaterialApp(
@@ -60,7 +59,7 @@ class MyApp extends ConsumerWidget {
           builder: (context, ref, _) {
             final authState = ref.watch(authServiceProvider);
             // Only show MainLayout (player/navbar) if authenticated
-            if (authState.isLoggedIn) {
+            if (authState.isAuthenticated) {
               return MainLayout(child: child!);
             }
             return child!;
@@ -70,7 +69,7 @@ class MyApp extends ConsumerWidget {
       home: Consumer(
         builder: (context, ref, _) {
           final authState = ref.watch(authServiceProvider);
-          return authState.isLoggedIn ? const HomeScreen() : const AuthScreen();
+          return authState.isAuthenticated ? const HomeScreen() : const AuthScreen();
         },
       ),
     );
